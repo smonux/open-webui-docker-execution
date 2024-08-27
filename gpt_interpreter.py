@@ -7,6 +7,7 @@ version: 0.1.0
 
 import asyncio
 import subprocess
+from typing import Callable, Awaitable
 
 class Tools:
     async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str:
