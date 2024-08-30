@@ -10,7 +10,7 @@ import subprocess
 from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
-run_python_code_description="""
+run_python_code_description = """
 Executes the given Python code in a subprocess asynchronously and returns the code itself,
 the standard output  and the standard error. 
 
@@ -27,11 +27,12 @@ import matplotlib;import mpl_ascii; mpl_ascii.ENABLE_COLORS=False;matplotlib.use
 
 """
 
-run_python_code_hints="""
+run_python_code_hints = """
 
 :param code: The Python code to execute as a string.
 :return: A string containing the combined standard output and error output and the executed code itself
 """
+
 
 class Tools:
     class Valves(BaseModel):
@@ -41,16 +42,16 @@ class Tools:
         )
         SHARED_FILES_PATH: str = Field(
             default="/app/data/shared_files",
-            description="The path to the shared files directory."
+            description="The path to the shared files directory.",
         )
         PREDEFINED_PACKAGES: list = Field(
             default=["pandas", "numpy", "scipy"],
-            description="A list of predefined packages that are not part of the standard library. Install" +
-            " matplotlib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities " ,
+            description="A list of predefined packages that are not part of the standard library. Install"
+            + " matplotlib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities ",
         )
         ADDITIONAL_CONTEXT: str = Field(
             default="",
-            description="Additional context to be included in the prompt, one line below the predefined packages."
+            description="Additional context to be included in the prompt, one line below the predefined packages.",
         )
 
     def __init__(self):
@@ -59,24 +60,27 @@ class Tools:
         # The docstring is parsed after instantiation of the Tools, so this should work
         # The parsing doesn't support multiline descriptions (yet) so it has to be in a single line
         description = run_python_code_description.format(
-                predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES),
-                additional_context=s", ".join(self.valves.ADDITIONAL_CONTEXT))
+            predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES),
+            additional_context=", ".join(self.valves.ADDITIONAL_CONTEXT),
+        )
 
         description = description.replace("\n", " ")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
 
-    async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: 
+    async def run_python_code(
+        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
+    ) -> str:
         """docstring placeholder"""
         await __event_emitter__(
-                {
-                    "type": "status",
-                    "data": {
-                        "description": "Executing Python code",
-                        "status": "in_progress",
-                        "done": False,
-                    },
-                }
-            )
+            {
+                "type": "status",
+                "data": {
+                    "description": "Executing Python code",
+                    "status": "in_progress",
+                    "done": False,
+                },
+            }
+        )
         stdout, stderr = "NO stdout", "NO stderr"
         try:
             # Execute the code in a subprocess asynchronously
@@ -86,12 +90,12 @@ class Tools:
                 code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=self.valves.SHARED_FILES_PATH,
-                timeout=self.valves.CODE_INTERPRETER_TIMEOUT,
+                cwd=self.valves.SHARED_FILES_PATH
             )
 
             # Wait for the process to complete and capture output
-            stdout, stderr = await process.communicate()
+            stdout, stderr = await asyncio.wait_for(process.communicate(),
+                                    timeout=self.valves.CODE_INTERPRETER_TIMEOUT)
             stdout, stderr = stdout.decode(), stderr.decode()
 
             # output = stdout.decode() + stderr.decode()
