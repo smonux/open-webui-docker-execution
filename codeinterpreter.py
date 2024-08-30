@@ -46,7 +46,7 @@ class Tools:
         self.valves = self.Valves()
         self.run_python_code.__doc__ = run_python_code_description.format(predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES)) + run_python_code_hints
     async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: """docstring placeholder"""
-        await __event_emitter__(
+    await __event_emitter__(
             {
                 "type": "status",
                 "data": {
