@@ -10,6 +10,22 @@ import subprocess
 from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
+run_python_code_description="""
+Executes the given Python code in a subprocess asynchronously and returns the code itself,
+the standard output  and the standard error. 
+
+In addition to the standard library it has these packages installed
+{predefined_packages}
+
+If matplotlib and mpl_ascii are installed, ascii based plots may be used 
+
+"""
+
+run_python_code_hints=
+"""
+:param code: The Python code to execute as a string.
+:return: A string containing the combined standard output and error output and the executed code itself
+"""
 
 class Tools:
     class Valves(BaseModel):
@@ -23,7 +39,8 @@ class Tools:
         )
         PREDEFINED_PACKAGES: list = Field(
             default=["pandas", "numpy", "scipy"],
-            description="A list of predefined packages that are not part of the standard library.",
+            description="A list of predefined packages that are not part of the standard library. Install" +
+            " matplotib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities " ,
         )
 
     def __init__(self):
@@ -32,9 +49,8 @@ class Tools:
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
     ) -> str:
         """
-        Executes the given Python code in a subprocess asynchronously and returns the code itself,  the standard output  and the standard error. It may be used to answer data analysis queries. The output preferently should be in html, given that's going to be displayed in a browser.
-        :param code: The Python code to execute as a string.
-        :return: A string containing the combined standard output and error output formatted as monospaced text.
+        docstring placeholder. OpenwebUI only uses for the description the first line so it's built elsewhere
+        it's built in the __init__ for readability.
         """
         await __event_emitter__(
             {
