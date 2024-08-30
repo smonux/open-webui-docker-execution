@@ -41,7 +41,7 @@ class Tools:
             description="The timeout value in seconds for the code interpreter subprocess.",
         )
         SHARED_FILES_PATH: str = Field(
-            default="/app/data/shared_files",
+            default="/app/backend/data/shared_files",
             description="The path to the shared files directory.",
         )
         PREDEFINED_PACKAGES: list = Field(

@@ -6,13 +6,14 @@ services:
         FROM ghcr.io/open-webui/open-webui:main
         RUN pip install matplotlib
         RUN pip install mpl_ascii
+        RUN mkdir  /app/backend/data/shared_files
     #    image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
     ports:
       - "3000:8080"
     volumes:
       - open-webui:/app/backend/data
-      - ./shared_files:/app/data/shared_files
+      - ./shared_files:/app/backend/data/shared_files
       - ./codeinterpreter.py:/app/backend/data/tools/codeinterpreter.py
     restart: always
     environment:
