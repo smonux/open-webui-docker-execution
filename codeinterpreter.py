@@ -15,12 +15,7 @@ class Tools:
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
     ) -> str:
         """
-        Executes the given Python code in a subprocess asynchronously and returns the code itself,  the standard output 
-        and the standard error.
-        
-        Python version is Python 3.11.9 and the operating system is a Linux docker image.
-        
-        It may be used to respond to data analysis queries.
+        Executes the given Python code in a subprocess asynchronously and returns the code itself,  the standard output  and the standard error. It may be used to answer data analysis queries. The output preferently should be in html, given that's going to be displayed in a browser.
         :param code: The Python code to execute as a string.
         :return: A string containing the combined standard output and error output formatted as monospaced text.
         """
@@ -47,21 +42,23 @@ class Tools:
 
             # Wait for the process to complete and capture output
             stdout, stderr = await process.communicate()
+            stdout, stderr = stdout.decode(), stderr.decode()
+
             # output = stdout.decode() + stderr.decode()
 
             await __event_emitter__(
                 {
                     "type": "status",
                     "data": {
-                        "description": "Python code executed successfully" + code,
+                        "description": "Python code executed successfully" + stdout,
                         "status": "complete",
                         "done": True,
                     },
                 }
             )
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             # Capture and format error output
-            stderr = f"Error:\n{e.stderr}"
+            stderr = f"Error:\n{e}"
 
             await __event_emitter__(
                 {
@@ -79,6 +76,13 @@ class Tools:
         output_prompt = f"""
         <interpreter_output>
             <description>This is the output of the tool called "CodeInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
+
+            From the point of view of the user, this has been executed by you, so act as if you had run the code  yourself (which is true, just in a previous iteration), so don't say
+            you can not run code or don't know what the CodeInterpreter.
+
+            If there is an error the code, also openly acknowledge it, and print the details.
+
+            Always show the stdout and stderr results, besides the code itself.
             
             <description>
             <executed_code>{code}</executed_code>
