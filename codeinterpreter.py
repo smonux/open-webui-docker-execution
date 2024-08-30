@@ -11,6 +11,14 @@ from typing import Callable, Awaitable
 
 
 class Tools:
+    class Valves(BaseModel):
+        CODE_INTERPRETER_TIMEOUT: int = Field(
+            default=120,
+            description="The timeout value in seconds for the code interpreter subprocess.",
+        )
+
+    def __init__(self):
+        self.valves = self.Valves()
     async def run_python_code(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
     ) -> str:
@@ -38,6 +46,7 @@ class Tools:
                 code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                timeout=self.valves.CODE_INTERPRETER_TIMEOUT,
             )
 
             # Wait for the process to complete and capture output
