@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from codeinterpreter import Tools
 
 class TestCodeInterpreter(unittest.TestCase):
