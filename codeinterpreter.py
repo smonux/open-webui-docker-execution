@@ -55,7 +55,7 @@ class Tools:
         description = run_python_code_description.format(
                 predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES))
 
-        description = description.replace("\n", "..")
+        description = description.replace("\n", " ")
         self.run_python_code.__doc__ = "\n" +  description + run_python_code_hints
 
     async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: 
@@ -134,3 +134,22 @@ class Tools:
         </interpreter_output>
         """
         return output_prompt
+import unittest
+from codeinterpreter import Tools
+
+class TestCodeInterpreter(unittest.TestCase):
+    def setUp(self):
+        self.tools = Tools()
+
+    def test_run_python_code_with_matplotlib(self):
+        code = """
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3, 4])
+plt.ylabel('some numbers')
+plt.savefig('simple_plot.png')
+"""
+        result = self.tools.run_python_code(code, lambda x: None)
+        self.assertIn("simple_plot.png", result)
+
+if __name__ == '__main__':
+    unittest.main()
