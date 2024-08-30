@@ -17,6 +17,10 @@ class Tools:
             default=120,
             description="The timeout value in seconds for the code interpreter subprocess.",
         )
+        SHARED_FILES_PATH: str = Field(
+            default="/app/data/shared_files",
+            description="The path to the shared files directory."
+        )
         PREDEFINED_PACKAGES: list = Field(
             default=["pandas", "numpy", "scipy"],
             description="A list of predefined packages that are not part of the standard library.",
@@ -51,6 +55,7 @@ class Tools:
                 code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                cwd=self.valves.SHARED_FILES_PATH,
                 timeout=self.valves.CODE_INTERPRETER_TIMEOUT,
             )
 
