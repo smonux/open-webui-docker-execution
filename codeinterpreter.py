@@ -21,8 +21,7 @@ If matplotlib and mpl_ascii are installed, ascii based plots may be used
 
 """
 
-run_python_code_hints=
-"""
+run_python_code_hints="""
 :param code: The Python code to execute as a string.
 :return: A string containing the combined standard output and error output and the executed code itself
 """
