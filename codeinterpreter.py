@@ -17,11 +17,13 @@ the standard output  and the standard error.
 In addition to the standard library it has these packages installed
 {predefined_packages}
 
-If matplotlib and mpl_ascii are installed, ascii based plots may be used 
+If matplotlib and mpl_ascii are installed, ascii based plots may be used like this:
+import matplotlib;import mpl_ascii; mpl_ascii.ENABLE_COLORS=False;matplotlib.use("module://mpl_ascii")
 
 """
 
 run_python_code_hints="""
+
 :param code: The Python code to execute as a string.
 :return: A string containing the combined standard output and error output and the executed code itself
 """
@@ -44,19 +46,26 @@ class Tools:
 
     def __init__(self):
         self.valves = self.Valves()
-        self.run_python_code.__doc__ = run_python_code_description.format(predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES)) + run_python_code_hints
-    async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: """docstring placeholder"""
-    await __event_emitter__(
-            {
-                "type": "status",
-                "data": {
-                    "description": "Executing Python code",
-                    "status": "in_progress",
-                    "done": False,
-                },
-            }
-        )
-    stdout, stderr = "NO stdout", "NO stderr"
+
+        description = run_python_code_description.format(
+                predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES))
+
+        description = description.replace("\n", "..")
+        self.run_python_code.__doc__ = description + run_python_code_hints
+
+    async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: 
+        """docstring placeholder"""
+        await __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": "Executing Python code",
+                        "status": "in_progress",
+                        "done": False,
+                    },
+                }
+            )
+        stdout, stderr = "NO stdout", "NO stderr"
         try:
             # Execute the code in a subprocess asynchronously
             process = await asyncio.create_subprocess_exec(
