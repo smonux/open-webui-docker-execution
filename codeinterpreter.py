@@ -60,7 +60,7 @@ class Tools:
         # The parsing doesn't support multiline descriptions (yet) so it has to be in a single line
         description = run_python_code_description.format(
                 predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES),
-                additional_context=self.valves.ADDITIONAL_CONTEXT)
+                additional_context=s", ".join(self.valves.ADDITIONAL_CONTEXT))
 
         description = description.replace("\n", " ")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
