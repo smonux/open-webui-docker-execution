@@ -1,6 +1,6 @@
 """
-title: GPT Interpreter Tool
-author: YourName
+title: CodeInterpreter Tool
+author: smonux
 author_url: 
 version: 0.1.0
 """
