@@ -17,6 +17,9 @@ the standard output  and the standard error.
 In addition to the standard library it has these packages installed
 {predefined_packages}
 
+Files referenced in the prompt without absolute path, should be treated relative to the current working directory.
+The subprocess is going to be launched in a specific folder which should contain relevant files.
+
 If matplotlib and mpl_ascii are installed, ascii based plots may be used like this:
 import matplotlib;import mpl_ascii; mpl_ascii.ENABLE_COLORS=False;matplotlib.use("module://mpl_ascii")
 
@@ -47,11 +50,13 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
+        # The docstring is parsed after instantiation of the Tools, so this should work
+        # The parsing doesn't support multiline descriptions (yet) so it has to be in a single line
         description = run_python_code_description.format(
                 predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES))
 
         description = description.replace("\n", "..")
-        self.run_python_code.__doc__ = description + run_python_code_hints
+        self.run_python_code.__doc__ = "\n" +  description + run_python_code_hints
 
     async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: 
         """docstring placeholder"""
