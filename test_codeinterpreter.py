@@ -5,15 +5,13 @@ class TestCodeInterpreter(unittest.TestCase):
     def setUp(self):
         self.tools = Tools()
 
-    def test_run_python_code_with_matplotlib(self):
+    async def test_run_python_code_with_calculation(self):
         code = """
-import matplotlib.pyplot as plt
-plt.plot([1, 2, 3, 4])
-plt.ylabel('some numbers')
-plt.savefig('simple_plot.png')
+result = 2 + 2
+print(f'The result of the calculation is: {result}')
 """
-        result = self.tools.run_python_code(code, lambda x: None)
-        self.assertIn("simple_plot.png", result)
+        result = await self.tools.run_python_code(code, lambda x: asyncio.ensure_future(x({})))
+        self.assertIn("The result of the calculation is: 4", result)
 
 if __name__ == '__main__':
     unittest.main()
