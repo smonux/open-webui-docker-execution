@@ -56,7 +56,7 @@ class Tools:
                 },
             }
         )
-        stdout, stderr = "NO stdout", "NO stderr"
+    stdout, stderr = "NO stdout", "NO stderr"
         try:
             # Execute the code in a subprocess asynchronously
             process = await asyncio.create_subprocess_exec(
