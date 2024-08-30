@@ -45,13 +45,8 @@ class Tools:
 
     def __init__(self):
         self.valves = self.Valves()
-    async def run_python_code(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
-    ) -> str:
-        """
-        docstring placeholder. OpenwebUI only uses for the description the first line so it's built elsewhere
-        it's built in the __init__ for readability.
-        """
+        self.run_python_code.__doc__ = run_python_code_description.format(predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES)) + run_python_code_hints
+    async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: """docstring placeholder"""
         await __event_emitter__(
             {
                 "type": "status",
