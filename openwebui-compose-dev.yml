@@ -1,0 +1,21 @@
+
+services:
+  open-webui:
+    build: 
+      dockerfile_inline: | 
+        FROM ghcr.io/open-webui/open-webui:main
+        RUN pip install matplotlib
+        RUN pip install mpl_ascii
+    #    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    volumes:
+      - open-webui:/app/backend/data
+    restart: always
+    environment:
+      #https://docs.openwebui.com/getting-started/logging
+      - GLOBAL_LOG_LEVEL=DEBUG
+
+volumes:
+  open-webui:
