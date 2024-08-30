@@ -8,6 +8,7 @@ version: 0.1.0
 import asyncio
 import subprocess
 from typing import Callable, Awaitable
+from pydantic import BaseModel, Field
 
 
 class Tools:
