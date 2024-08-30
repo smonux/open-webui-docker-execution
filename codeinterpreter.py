@@ -56,12 +56,7 @@ class Tools:
                 predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES))
 
         description = description.replace("\n", " ")
-        self.run_python_code.__doc__ = f"""
-Executes the given Python code in a subprocess asynchronously and returns the code itself, the standard output and the standard error.
-:param code: The Python code to execute as a string.
-:param __event_emitter__: A callable that emits events.
-:return: A string containing the combined standard output and error output and the executed code itself.
-"""
+        self.run_python_code.__doc__ = "\n" +  description + run_python_code_hints
 
     async def run_python_code(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str: 
         """docstring placeholder"""
