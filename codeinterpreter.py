@@ -21,6 +21,10 @@ class Tools:
             default=["pandas", "numpy", "scipy"],
             description="A list of predefined packages that are not part of the standard library.",
         )
+        PREDEFINED_PACKAGES: list = Field(
+            default=["pandas", "numpy", "scipy"],
+            description="A list of predefined packages that are not part of the standard library.",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
