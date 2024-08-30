@@ -17,6 +17,8 @@ the standard output  and the standard error.
 In addition to the standard library it has these packages installed
 {predefined_packages}
 
+{additional_context}
+
 Files referenced in the prompt without absolute path, should be treated relative to the current working directory.
 The subprocess is going to be launched in a specific folder which should contain relevant files.
 
@@ -44,7 +46,11 @@ class Tools:
         PREDEFINED_PACKAGES: list = Field(
             default=["pandas", "numpy", "scipy"],
             description="A list of predefined packages that are not part of the standard library. Install" +
-            " matplotib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities " ,
+            " matplotlib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities " ,
+        )
+        ADDITIONAL_CONTEXT: str = Field(
+            default="",
+            description="Additional context to be included in the prompt, one line below the predefined packages."
         )
 
     def __init__(self):
@@ -53,7 +59,8 @@ class Tools:
         # The docstring is parsed after instantiation of the Tools, so this should work
         # The parsing doesn't support multiline descriptions (yet) so it has to be in a single line
         description = run_python_code_description.format(
-                predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES))
+                predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES),
+                additional_context=self.valves.ADDITIONAL_CONTEXT)
 
         description = description.replace("\n", " ")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
