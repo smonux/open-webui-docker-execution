@@ -83,19 +83,21 @@ class Tools:
         )
         stdout, stderr = "NO stdout", "NO stderr"
         try:
-            # Execute the code in a subprocess asynchronously
             process = await asyncio.create_subprocess_exec(
+                # Execute the code in a subprocess asynchronously
                 "python",
                 "-c",
                 code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.valves.SHARED_FILES_PATH
+                # , timeout=self.valves.CODE_INTERPRETER_TIMEOUT
             )
 
             # Wait for the process to complete and capture output
-            stdout, stderr = await asyncio.wait_for(process.communicate(),
-                                    timeout=self.valves.CODE_INTERPRETER_TIMEOUT)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=self.valves.CODE_INTERPRETER_TIMEOUT
+            )
             stdout, stderr = stdout.decode(), stderr.decode()
 
             # output = stdout.decode() + stderr.decode()
