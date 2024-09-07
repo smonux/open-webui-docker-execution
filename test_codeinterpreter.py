@@ -6,7 +6,7 @@ class TestCodeInterpreter(unittest.TestCase):
     def setUp(self):
         self.tools = Tools()
         self.tools.valves.CODE_INTERPRETER_TIMEOUT = 2  # Set timeout to 2 seconds for testing
-        self.tool_instance = self.tools  # Instantiate a Tool object for the test
+        self.tool_instance = self.tools.run_python_code  # Instantiate a Tool object for the test
 
     async def test_run_python_code_with_timeout(self):
         code = """
