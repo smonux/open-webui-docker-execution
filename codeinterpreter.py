@@ -14,8 +14,7 @@ run_python_code_description = """
 Executes the given Python code in a subprocess asynchronously and returns the code itself,
 the standard output  and the standard error. 
 
-In addition to the standard library it has these packages installed
-{predefined_packages}
+In addition to the standard library, all installed packages are available.
 
 {additional_context}
 
@@ -47,11 +46,6 @@ class Tools:
             default="/app/backend/data/shared_files",
             description="The path to the shared files directory.",
         )
-        PREDEFINED_PACKAGES: list = Field(
-            default=["pandas", "numpy", "scipy"],
-            description="A list of predefined packages that are not part of the standard library. Install"
-            + " matplotlib/mpl_ascii for basic plotting and sklearn/statsmodels for data analysis capabilities ",
-        )
         ADDITIONAL_CONTEXT: str = Field(
             default="",
             description="Additional context to be included in the prompt, one line below the predefined packages.",
@@ -60,10 +54,11 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
-        # The docstring is parsed after instantiation of the Tools, so this should work
-        # The parsing doesn't support multiline descriptions (yet) so it has to be in a single line
+        import subprocess
+        result = subprocess.run(["pip", "list"], stdout=subprocess.PIPE, text=True)
+        installed_packages = [line.split()[0] for line in result.stdout.splitlines()[2:]]
         description = run_python_code_description.format(
-            predefined_packages=", ".join(self.valves.PREDEFINED_PACKAGES),
+            predefined_packages=", ".join(installed_packages),
             additional_context=", ".join(self.valves.ADDITIONAL_CONTEXT),
         )
 
