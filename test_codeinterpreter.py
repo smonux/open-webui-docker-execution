@@ -22,7 +22,7 @@ class TestCodeInterpreter(unittest.TestCase):
 
     def test_run_python_code_docstring_format(self):
         docstring = Tools.run_python_code.__doc__
-        expected_pattern = r"\n[^\n]+(\n:param [^\n]+)*\n:return [^\n]+"
+        expected_pattern = r"\n[^\n]+(\n:param [^\n]+)*\n:return [^\n]+(\n)*"
         self.assertRegex(docstring, expected_pattern)
 
 if __name__ == '__main__':
