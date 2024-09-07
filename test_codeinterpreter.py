@@ -22,7 +22,7 @@ time.sleep(3)  # Sleep for 3 seconds to exceed the 2-second timeout
         code = """
 print(2 + 2)
 """
-        event_emitter = Mock()
+        event_emitter = AsyncMock()
         result = await self.tools.run_python_code(code, event_emitter)
         self.assertIn("4", result)
 
