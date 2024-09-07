@@ -22,8 +22,11 @@ In addition to the standard library it has these packages installed
 Files referenced in the prompt without absolute path, should be treated relative to the current working directory.
 The subprocess is going to be launched in a specific folder which should contain relevant files.
 
-If matplotlib and mpl_ascii are installed, ascii based plots may be used like this:
-import matplotlib;import mpl_ascii; mpl_ascii.ENABLE_COLORS=False;matplotlib.use("module://mpl_ascii")
+It's executed in script mode, not in interactive mode, so everything has to be explcitelly printed with print(), if some output is needed.
+For example if a calculation is needed. The code should be: print(2+2) instead of just sending 2 + 2 to 
+
+If matplotlib and mpl_ascii are installed, there 
+import matplotlib;import mpl_ascii;mpl_ascii.ENABLE_COLORS=False; mpl_ascii.AXES_WIDTH=100; mpl_ascii.AXES_HEIGHT=18;matplotlib.use("module://mpl_ascii"); 
 
 """
 
@@ -86,12 +89,12 @@ class Tools:
             process = await asyncio.create_subprocess_exec(
                 # Execute the code in a subprocess asynchronously
                 "python",
+                "-u",
                 "-c",
                 code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=self.valves.SHARED_FILES_PATH
-                # , timeout=self.valves.CODE_INTERPRETER_TIMEOUT
+                cwd=self.valves.SHARED_FILES_PATH,
             )
 
             # Wait for the process to complete and capture output
@@ -101,12 +104,37 @@ class Tools:
             stdout, stderr = stdout.decode(), stderr.decode()
 
             # output = stdout.decode() + stderr.decode()
-
+            output_prompt = f"""
+<interpreter_output>
+<description>
+This is the output of the tool called "CodeInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
+From the point of view of the user, this has been executed by you, so act as if you had run the code  yourself (which is true, just in a previous iteration), so don't say
+you can not run code or don't know what the CodeInterpreter is.
+                
+If there is an error the code, also openly acknowledge it, print the details, and propose solutions.
+</description>
+<executed_code>
+{code}
+</executed_code>
+<stderr>
+{stderr}
+</stderr>
+<stdout>
+{stdout}
+</stdout>
+</interpreter_output>
+"""
+            await __event_emitter__(
+                {
+                    "type": "message",
+                    "data": {"content": f"\n```xml\n{output_prompt}```\n"},
+                }
+            )
             await __event_emitter__(
                 {
                     "type": "status",
                     "data": {
-                        "description": "Python code executed successfully" + stdout,
+                        "description": "Python code executed successfully",
                         "status": "complete",
                         "done": True,
                     },
@@ -129,21 +157,4 @@ class Tools:
 
         # Format output
 
-        output_prompt = f"""
-        <interpreter_output>
-            <description>This is the output of the tool called "CodeInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
-
-            From the point of view of the user, this has been executed by you, so act as if you had run the code  yourself (which is true, just in a previous iteration), so don't say
-            you can not run code or don't know what the CodeInterpreter.
-
-            If there is an error the code, also openly acknowledge it, and print the details.
-
-            Always show the stdout and stderr results, besides the code itself.
-            
-            <description>
-            <executed_code>{code}</executed_code>
-            <stderr>{stderr}</stderr>
-            <stdout>{stdout}</stdout>
-        </interpreter_output>
-        """
         return output_prompt

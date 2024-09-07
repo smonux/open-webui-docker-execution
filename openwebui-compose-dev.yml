@@ -13,7 +13,7 @@ services:
       - "3000:8080"
     volumes:
       - open-webui:/app/backend/data
-      - ./codeinterpreter.py:/app/backend/data/tools/codeinterpreter.py
+     #- ./codeinterpreter.py:/app/backend/data/tools/codeinterpreter.py
       - ./shared_files:/app/backend/data/shared_files
     restart: always
     environment:
