@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from codeinterpreter import Tools
 import re
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 class TestCodeInterpreter(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -14,7 +14,7 @@ class TestCodeInterpreter(unittest.IsolatedAsyncioTestCase):
 import time
 time.sleep(3)  # Sleep for 3 seconds to exceed the 2-second timeout
 """
-        event_emitter = Mock()
+        event_emitter = AsyncMock()
         result = await self.tools.run_python_code(code, event_emitter)
         self.assertIn("Error: Timeout", result)
 
