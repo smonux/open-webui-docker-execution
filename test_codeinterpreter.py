@@ -3,7 +3,7 @@ import asyncio
 from codeinterpreter import Tools
 import re
 
-class TestCodeInterpreter(unittest.TestCase):
+class TestCodeInterpreter(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tools = Tools()
         self.tools.valves.CODE_INTERPRETER_TIMEOUT = 2  # Set timeout to 2 seconds for testing
