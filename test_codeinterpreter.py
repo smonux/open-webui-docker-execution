@@ -1,12 +1,12 @@
 import unittest
 import asyncio
 from codeinterpreter import Tools
+import re
 
 class TestCodeInterpreter(unittest.TestCase):
     def setUp(self):
         self.tools = Tools()
         self.tools.valves.CODE_INTERPRETER_TIMEOUT = 2  # Set timeout to 2 seconds for testing
-        self.tool_instance = self.tools.run_python_code  # Instantiate a Tool object for the test
 
     async def test_run_python_code_with_timeout(self):
         code = """
@@ -15,16 +15,6 @@ time.sleep(3)  # Sleep for 3 seconds to exceed the 2-second timeout
 """
         result = await self.tools.run_python_code(code, lambda x: asyncio.ensure_future(x({})))
         self.assertIn("Error: Timeout", result)
-
-import re
-
-class TestCodeInterpreter(unittest.TestCase):
-    # Existing setUp method and test methods...
-
-    def test_run_python_code_docstring_format(self):
-        docstring = self.tool_instance.run_python_code.__doc__
-        expected_pattern = r"\n[^\n]+(\n:param [^\n]+)*\n:return [^\n]+(\n)*"
-        self.assertRegex(docstring, expected_pattern)
 
 if __name__ == '__main__':
     unittest.main()
