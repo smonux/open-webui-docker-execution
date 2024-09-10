@@ -79,27 +79,7 @@ class Tools:
                 },
             }
         )
-        stdout, stderr = "NO stdout", "NO stderr"
-        try:
-            process = await asyncio.create_subprocess_exec(
-                # Execute the code in a subprocess asynchronously
-                "python",
-                "-u",
-                "-c",
-                code,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.valves.SHARED_FILES_PATH,
-            )
-
-            # Wait for the process to complete and capture output
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=self.valves.CODE_INTERPRETER_TIMEOUT
-            )
-            stdout, stderr = stdout.decode(), stderr.decode()
-
-            # output = stdout.decode() + stderr.decode()
-            output_prompt = f"""
+        output_template = """
 <interpreter_output>
 <description>
 This is the output of the tool called "CodeInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
@@ -119,12 +99,25 @@ If there is an error the code, also openly acknowledge it, print the details, an
 </stdout>
 </interpreter_output>
 """
-            await __event_emitter__(
-                {
-                    "type": "message",
-                    "data": {"content": f"\n```xml\n{output_prompt}```\n"},
-                }
+        stdout, stderr = "NO stdout", "NO stderr"
+        try:
+            process = await asyncio.create_subprocess_exec(
+                # Execute the code in a subprocess asynchronously
+                "python",
+                "-u",
+                "-c",
+                code.encode("utf-8"),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=self.valves.SHARED_FILES_PATH,
             )
+
+            # Wait for the process to complete and capture output
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=self.valves.CODE_INTERPRETER_TIMEOUT
+            )
+            stdout, stderr = stdout.decode("utf-8"), stderr.decode("utf-8")
+
             await __event_emitter__(
                 {
                     "type": "status",
@@ -135,10 +128,8 @@ If there is an error the code, also openly acknowledge it, print the details, an
                     },
                 }
             )
+            output  = output_template.format(code = code, stderr = stderr, stdout = stdout)
         except Exception as e:
-            # Capture and format error output
-            stderr = f"Error:\n{e}"
-
             await __event_emitter__(
                 {
                     "type": "status",
@@ -149,7 +140,13 @@ If there is an error the code, also openly acknowledge it, print the details, an
                     },
                 }
             )
+        
 
-        # Format output
+        await __event_emitter__(
+                {
+                    "type": "message",
+                    "data": {"content": f"\n```xml\n{output}```\n"},
+                }
+            )
 
-        return output_prompt
+        return output
