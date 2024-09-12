@@ -15,6 +15,7 @@ services:
       - open-webui:/app/backend/data
      #- ./codeinterpreter.py:/app/backend/data/tools/codeinterpreter.py
       - ./shared_files:/app/backend/data/shared_files
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: always
     environment:
       #https://docs.openwebui.com/getting-started/logging
