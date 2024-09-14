@@ -22,6 +22,8 @@ OpenWebUI docker image (it has the docker python package installed by default).
 import asyncio
 import docker 
 import json
+import random
+import requests
 from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
@@ -50,18 +52,22 @@ run_python_code_hints = """
 :return: A string containing the combined standard output and error output and the executed code itself
 """
 
-def run_command(code, dockersocket, image):
+def run_command(code, dockersocket, image, timeout=2):
     code = code + "\n\nexit()\n"
     client = docker.DockerClient(base_url = dockersocket) 
     container = client.containers.run(image,
                                    command =  "python -iq",
-                                   name = "oai-docker-interpreter",
+                                   name = "oai-docker-interpreter-" + random.randint(0, 999999999) ,
                                    detach = True,
                                    remove = True,
                                    stdin_open = True)
     s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
     s._sock.send(code.encode("utf-8"))
-    container.wait()
+    try:
+        container.wait(timeout)
+    except requests.exceptions.ReadTimeout:
+        container.stop(1)
+
     retval = container.logs().decode("utf-8")
     return retval
 
