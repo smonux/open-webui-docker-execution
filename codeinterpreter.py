@@ -1,12 +1,27 @@
 """
-title: CodeInterpreter Tool
+title: DockerInterpreter Tool
 author: smonux
 author_url: 
 version: 0.1.0
+
+This is an openwebui tool that can run arbitrary python(other languages might be supported in the future)
+
+Further isolation can be achieved by using different docker engines (gVisor).
+
+Inspired in 
+ https://github.com/EtiennePerot/open-webui-code-execution
+
+The simplest method to make it work it grant access to the unix socket that controls docker.
+If OpenWebUI is run in a docker machine, it can be done like this
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+OpenWebUI docker image (it has the docker python package installed by default).
 """
 
 import asyncio
-import subprocess
+import docker 
+import json
 from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
@@ -48,22 +63,41 @@ class Tools:
         )
         ADDITIONAL_CONTEXT: str = Field(
             default="",
-            description="Additional context to be included in the prompt, one line below the predefined packages.",
+            description="Additional context to be included in the tool description.",
+        )
+        DOCKER_SOCKET: str = Field(
+            default="unix://var/run/docker.sock",
+            description="The only tested is unix://var/run/docker.sock but others could work. If OpenWebUI is run in docker mode "
+            "sharing the host socket should be enough"
+        )
+        DOCKER_IMAGE: str = Field(
+            default="python:3.11",
+            description="image to run"
+        )
+        DOCKER_YAML_OPTIONS : str = Field(
+            default="""
+# See https://docker-py.readthedocs.io/en/stable/containers.html
+            """,
+            description="yaml file to configure docker container https://docker-py.readthedocs.io/en/stable/containers.html"
         )
 
     def __init__(self):
         self.valves = self.Valves()
 
-        import subprocess
-        result = subprocess.run(["pip", "list"], stdout=subprocess.PIPE, text=True)
-        installed_packages = [line.split()[0] for line in result.stdout.splitlines()[2:]]
         description = run_python_code_description.format(
-            predefined_packages=", ".join(installed_packages),
-            additional_context=", ".join(self.valves.ADDITIONAL_CONTEXT),
+            additional_context=", ".join(self.valves.ADDITIONAL_CONTEXT)
         )
 
         description = description.replace("\n", " ")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
+        client = docker.DockerClient(base_url = self.valves.DOCKER_SOCKET) 
+        retval = client.containers.run(self.valves.DOCKER_IMAGE,
+                                       command =  "pip list --format json",
+                                       name = "oai-docker-execution")
+        retvaljs = json.loads(retval.decode("utf-8"))
+        packages = [ p['name'] + "-" + p['version'] for p in retvaljs ]
+
+        self.debug_info = packages
 
     async def run_python_code(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
