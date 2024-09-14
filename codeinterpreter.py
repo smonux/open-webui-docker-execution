@@ -37,7 +37,7 @@ Files referenced in the prompt without absolute path, should be treated relative
 The subprocess is going to be launched in a specific folder which should contain relevant files.
 
 It's executed in script mode, not in interactive mode, so everything has to be explcitelly printed with print(), if some output is needed.
-For example if a calculation is needed. The code should be: print(2+2) instead of just sending 2 + 2 to 
+For example if a calculation is needed. The code should be: print(2+2) instead of just sending 2 + 2 to the function.
 
 If matplotlib and mpl_ascii are installed, there 
 import matplotlib;import mpl_ascii;mpl_ascii.ENABLE_COLORS=False; mpl_ascii.AXES_WIDTH=100; mpl_ascii.AXES_HEIGHT=18;matplotlib.use("module://mpl_ascii"); 
@@ -49,6 +49,28 @@ run_python_code_hints = """
 :param code: The Python code to execute as a string.
 :return: A string containing the combined standard output and error output and the executed code itself
 """
+
+def run_command(code, dockersocket, image):
+    code = code + "\n\nexit()\n"
+    client = docker.DockerClient(base_url = dockersocket) 
+    container = client.containers.run(image,
+                                   command =  "python -iq",
+                                   name = "oai-docker-interpreter",
+                                   detach = True,
+                                   remove = True,
+                                   stdin_open = True)
+    s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
+    s._sock.send(code.encode("utf-8"))
+    container.wait()
+    retval = container.logs().decode("utf-8")
+    return retval
+
+    
+
+#    retvaljs = json.loads(retval.decode("utf-8"))
+#    packages = [ p['name'] + "-" + p['version'] for p in retvaljs ]
+
+
 
 
 class Tools:
