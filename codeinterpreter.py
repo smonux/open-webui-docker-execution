@@ -167,42 +167,17 @@ for package_name, version in installed_packages:
         output_template = """
 <interpreter_output>
 <description>
-This is the output of the tool called "CodeInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
-From the point of view of the user, this has been executed by you, so act as if you had run the code  yourself (which is true, just in a previous iteration), so don't say
-you can not run code or don't know what the CodeInterpreter is.
-                
-If there is an error the code, also openly acknowledge it, print the details, and propose solutions.
+This is the output of the tool called "DockerInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
 </description>
 <executed_code>
 {code}
 </executed_code>
-<stderr>
-{stderr}
-</stderr>
-<stdout>
-{stdout}
-</stdout>
+<output>
+{output}
+</output>
 </interpreter_output>
 """
-        stdout, stderr = "NO stdout", "NO stderr"
         try:
-            process = await asyncio.create_subprocess_exec(
-                # Execute the code in a subprocess asynchronously
-                "python",
-                "-u",
-                "-c",
-                code.encode("utf-8"),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.valves.SHARED_FILES_PATH,
-            )
-
-            # Wait for the process to complete and capture output
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=self.valves.CODE_INTERPRETER_TIMEOUT
-            )
-            stdout, stderr = stdout.decode("utf-8"), stderr.decode("utf-8")
-
             await __event_emitter__(
                 {
                     "type": "status",
@@ -213,7 +188,13 @@ If there is an error the code, also openly acknowledge it, print the details, an
                     },
                 }
             )
-            output  = output_template.format(code = code, stderr = stderr, stdout = stdout)
+            output = run_command(code = code,
+                    dockersocket = self.valves.DOCKER_SOCKET,
+                    image = self.valves.DOCKER_IMAGE,
+                    docker_args = self.docker_args,
+                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
+
+            retval = output_template.format(code = code, output = output)
         except Exception as e:
             await __event_emitter__(
                 {
@@ -225,16 +206,15 @@ If there is an error the code, also openly acknowledge it, print the details, an
                     },
                 }
             )
-        
 
         await __event_emitter__(
                 {
                     "type": "message",
                     "data": {"content": f"\n```xml\n{output}```\n"},
                 }
-            )
+        )
 
-        return output
+        return retval
 
 
 if __name__ == '__main__':
