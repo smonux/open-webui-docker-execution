@@ -31,7 +31,9 @@ run_python_code_description = """
 Executes the given Python code in a subprocess asynchronously and returns the code itself,
 the standard output  and the standard error. 
 
-In addition to the standard library, all installed packages are available.
+In addition to the standard library, these packages are avalaible:
+
+{packages}
 
 {additional_context}
 
@@ -52,32 +54,34 @@ run_python_code_hints = """
 :return: A string containing the combined standard output and error output and the executed code itself
 """
 
-def run_command(code, dockersocket, image, timeout=2):
-    code = code + "\n\nexit()\n"
+def run_command(code, dockersocket, image, docker_args, timeout=5):
+    thecode = f"""
+
+{code}
+
+exit()
+
+"""
     client = docker.DockerClient(base_url = dockersocket) 
-    container = client.containers.run(image,
-                                   command =  "python -iq",
-                                   name = "oai-docker-interpreter-" + random.randint(0, 999999999) ,
-                                   detach = True,
-                                   remove = True,
-                                   stdin_open = True)
+    # Some args get overwritten
+    docker_args.update({ 'image' : image,
+                        'command' :  "python -i -c 'import sys; sys.ps1, sys.ps2 = \"\", \"\"'",
+                        'name' : "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
+                        'detach' : True,
+                        'remove' : True,
+                        'stdin_open' : True})
+
+    container = client.containers.run(**docker_args)
     s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
-    s._sock.send(code.encode("utf-8"))
+    s._sock.send(thecode.encode("utf-8"))
     try:
-        container.wait(timeout)
+        container.wait(timeout = timeout)
     except requests.exceptions.ReadTimeout:
         container.stop(1)
+        return "Docker timed out"
 
     retval = container.logs().decode("utf-8")
     return retval
-
-    
-
-#    retvaljs = json.loads(retval.decode("utf-8"))
-#    packages = [ p['name'] + "-" + p['version'] for p in retvaljs ]
-
-
-
 
 class Tools:
     class Valves(BaseModel):
@@ -99,8 +103,8 @@ class Tools:
             "sharing the host socket should be enough"
         )
         DOCKER_IMAGE: str = Field(
-            default="python:3.11",
-            description="image to run"
+            default="python:3.11-alpine",
+            description="docker image to run"
         )
         DOCKER_YAML_OPTIONS : str = Field(
             default="""
@@ -112,20 +116,32 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
+        code = """
+import importlib.metadata
+
+distributions = importlib.metadata.distributions()
+installed_packages = []
+for dist in distributions:
+    args = (dist.metadata['Name'], dist.version)
+    installed_packages.append(args)
+
+for package_name, version in installed_packages:
+    print(f"{package_name}=={version}")
+        """
+
+        packages = run_command(code = code,
+                    dockersocket = self.valves.DOCKER_SOCKET,
+                    image = self.valves.DOCKER_IMAGE,
+                    docker_args = {},
+                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
+
         description = run_python_code_description.format(
-            additional_context=", ".join(self.valves.ADDITIONAL_CONTEXT)
+            packages = packages,
+            additional_context=self.valves.ADDITIONAL_CONTEXT
         )
 
-        description = description.replace("\n", " ")
+        description = description.replace("\n", ":")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
-        client = docker.DockerClient(base_url = self.valves.DOCKER_SOCKET) 
-        retval = client.containers.run(self.valves.DOCKER_IMAGE,
-                                       command =  "pip list --format json",
-                                       name = "oai-docker-execution")
-        retvaljs = json.loads(retval.decode("utf-8"))
-        packages = [ p['name'] + "-" + p['version'] for p in retvaljs ]
-
-        self.debug_info = packages
 
     async def run_python_code(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
@@ -212,3 +228,8 @@ If there is an error the code, also openly acknowledge it, print the details, an
             )
 
         return output
+
+
+if __name__ == '__main__':
+    tool = Tools()
+    print(tool.run_python_code.__doc__)
