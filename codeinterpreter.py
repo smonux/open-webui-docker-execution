@@ -28,7 +28,8 @@ from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
 run_python_code_description = """
-Executes the given Python code and returns the standard output and the standard error. 
+Executes the given Python code and returns the standard output and the standard
+error. 
 
 In addition to the standard library, these packages are avalaible:
 
@@ -36,8 +37,8 @@ In addition to the standard library, these packages are avalaible:
 
 {additional_context}
 
-Files referenced in the prompt without absolute path, should be treated relative to the current working directory.
-The process is going to be launched in a specific folder which should contain relevant files.
+Files referenced in the prompt without absolute path, should be treated relative
+to the current working directory.
 
 It's executed in interactive mode (python -i).
 
@@ -94,7 +95,8 @@ class Tools:
     class Valves(BaseModel):
         CODE_INTERPRETER_TIMEOUT: int = Field(
             default=120,
-            description="The timeout value in seconds for the code interpreter subprocess.",
+            description="The timeout value in seconds for the code interpreter"
+                        " subprocess.",
         )
         SHARED_FILES_PATH: str = Field(
             default="/app/backend/data/shared_files",
@@ -106,18 +108,19 @@ class Tools:
         )
         DOCKER_SOCKET: str = Field(
             default="unix://var/run/docker.sock",
-            description="The only tested is unix://var/run/docker.sock but others could work. If OpenWebUI is run in docker mode "
-            "sharing the host socket should be enough"
+            description="The only tested is unix://var/run/docker.sock but "
+                        " others could work. If OpenWebUI is run in docker mode "
+                        "sharing the host socket should be enough"
         )
         DOCKER_IMAGE: str = Field(
             default="python:3.11-alpine",
             description="docker image to run"
         )
         DOCKER_YAML_OPTIONS : str = Field(
-            default="""
-# See https://docker-py.readthedocs.io/en/stable/containers.html
+            default=""" # See https://docker-py.readthedocs.io/en/stable/containers.html
             """,
-            description="yaml file to configure docker container https://docker-py.readthedocs.io/en/stable/containers.html"
+            description="yaml file to configure docker container"
+            " https://docker-py.readthedocs.io/en/stable/containers.html"
         )
 
     def __init__(self):
@@ -148,7 +151,8 @@ for package_name, version in installed_packages:
         )
 
         description = description.replace("\n", ":")
-        Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
+        Tools.run_python_code.__doc__ = "\n" + description
+                                         + run_python_code_hints
 
     async def run_python_code(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
@@ -167,7 +171,11 @@ for package_name, version in installed_packages:
         output_template = """
 <interpreter_output>
 <description>
-This is the output of the tool called "DockerInterpreter", appended here for reference in the response. Use it, properly formatted, to answer the query of the user.
+This is the output of the tool called "DockerInterpreter", appended here for
+reference in the response. Use it to answer the query of the user.
+
+The user know use have access to the tool and can inspect your calls, don't 
+try to hide it or avoid talking about it.
 </description>
 <executed_code>
 {code}
