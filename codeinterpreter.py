@@ -22,6 +22,7 @@ OpenWebUI docker image (it has the docker python package installed by default).
 import asyncio
 import docker 
 import json
+import yaml
 import random
 import requests
 from typing import Callable, Awaitable
@@ -155,11 +156,10 @@ for package_name, version in installed_packages:
         )
 
         description = description.replace("\n", ":")
-        Tools.run_python_code.__doc__ = "\n" + description
-                                         + run_python_code_hints
+        Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
 
     async def run_python_code(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
+        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
     ) -> str:
         """docstring placeholder"""
         await __event_emitter__(
@@ -190,6 +190,14 @@ try to hide it or avoid talking about it.
 </interpreter_output>
 """
         try:
+            output = run_command(code = code,
+                    dockersocket = self.valves.DOCKER_SOCKET,
+                    image = self.valves.DOCKER_IMAGE,
+                    docker_args = self.docker_args,
+                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
+
+            retval = output_template.format(code = code, output = output)
+
             await __event_emitter__(
                 {
                     "type": "status",
@@ -200,13 +208,6 @@ try to hide it or avoid talking about it.
                     },
                 }
             )
-            output = run_command(code = code,
-                    dockersocket = self.valves.DOCKER_SOCKET,
-                    image = self.valves.DOCKER_IMAGE,
-                    docker_args = self.docker_args,
-                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
-
-            retval = output_template.format(code = code, output = output)
         except Exception as e:
             await __event_emitter__(
                 {
@@ -230,5 +231,18 @@ try to hide it or avoid talking about it.
 
 
 if __name__ == '__main__':
-    tool = Tools()
-    print(tool.run_python_code.__doc__)
+    import sys
+    async def _main():
+        tool = Tools()
+        print(tool.run_python_code.__doc__)
+        code = """
+import time
+time.sleep(10)
+print("Hello ---> world")
+"""
+        async def _dummy_emitter(event):
+            print(f"Event: {event}", file=sys.stderr) 
+        retval = await tool.run_python_code(code, _dummy_emitter)
+        print(retval)
+
+    asyncio.run(_main())
