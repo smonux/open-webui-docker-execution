@@ -118,6 +118,8 @@ class Tools:
         )
         DOCKER_YAML_OPTIONS : str = Field(
             default=""" # See https://docker-py.readthedocs.io/en/stable/containers.html
+mem_limit : "1g"
+network_disabled : True
             """,
             description="yaml file to configure docker container"
             " https://docker-py.readthedocs.io/en/stable/containers.html"
@@ -125,6 +127,8 @@ class Tools:
 
     def __init__(self):
         self.valves = self.Valves()
+        self.yaml_config = yaml.safe_load(self.valves.DOCKER_YAML_OPTIONS)
+        self.docker_args = self.yaml_config
 
         code = """
 import importlib.metadata
