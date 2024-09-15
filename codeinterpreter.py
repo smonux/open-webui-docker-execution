@@ -28,8 +28,7 @@ from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
 
 run_python_code_description = """
-Executes the given Python code in a subprocess asynchronously and returns the code itself,
-the standard output  and the standard error. 
+Executes the given Python code and returns the standard output and the standard error. 
 
 In addition to the standard library, these packages are avalaible:
 
@@ -38,13 +37,9 @@ In addition to the standard library, these packages are avalaible:
 {additional_context}
 
 Files referenced in the prompt without absolute path, should be treated relative to the current working directory.
-The subprocess is going to be launched in a specific folder which should contain relevant files.
+The process is going to be launched in a specific folder which should contain relevant files.
 
-It's executed in script mode, not in interactive mode, so everything has to be explcitelly printed with print(), if some output is needed.
-For example if a calculation is needed. The code should be: print(2+2) instead of just sending 2 + 2 to the function.
-
-If matplotlib and mpl_ascii are installed, there 
-import matplotlib;import mpl_ascii;mpl_ascii.ENABLE_COLORS=False; mpl_ascii.AXES_WIDTH=100; mpl_ascii.AXES_HEIGHT=18;matplotlib.use("module://mpl_ascii"); 
+It's executed in interactive mode (python -i).
 
 """
 
@@ -57,18 +52,30 @@ run_python_code_hints = """
 def run_command(code, dockersocket, image, docker_args, timeout=5):
     thecode = f"""
 
+import sys
+
+default_hook = sys.excepthook
+def exception_hook(exc_type, exc_value, tb):
+    default_hook(exc_type,exc_value,tb)
+    sys.exit()
+
+sys.excepthook = exception_hook
+
 {code}
 
-exit()
+sys.exit()
 
 """
     client = docker.DockerClient(base_url = dockersocket) 
-    # Some args get overwritten
+    # args which contradicts those  will get overwritten (silently)
     docker_args.update({ 'image' : image,
+                        # Hacky, but using PYTHONSTARTUP  requires uploading files to the image
                         'command' :  "python -i -c 'import sys; sys.ps1, sys.ps2 = \"\", \"\"'",
                         'name' : "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
                         'detach' : True,
+                        # difference?
                         'remove' : True,
+                        'auto_remove' : True,
                         'stdin_open' : True})
 
     container = client.containers.run(**docker_args)
@@ -76,11 +83,12 @@ exit()
     s._sock.send(thecode.encode("utf-8"))
     try:
         container.wait(timeout = timeout)
+        retval = container.logs().decode("utf-8")
     except requests.exceptions.ReadTimeout:
+        retval = "Docker timed out. Partial output:\n"  + container.logs().decode("utf-8")
         container.stop(1)
         return "Docker timed out"
 
-    retval = container.logs().decode("utf-8")
     return retval
 
 class Tools:
