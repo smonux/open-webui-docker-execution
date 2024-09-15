@@ -76,7 +76,7 @@ sys.exit()
                         # difference?
                         'remove' : True,
                         'auto_remove' : True,
-                        'stdin_open' : True})
+                        'stdin_open' : True })
 
     container = client.containers.run(**docker_args)
     s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
@@ -85,9 +85,8 @@ sys.exit()
         container.wait(timeout = timeout)
         retval = container.logs().decode("utf-8")
     except requests.exceptions.ReadTimeout:
-        retval = "Docker timed out. Partial output:\n"  + container.logs().decode("utf-8")
+        retval = "Docker execution timed out. Partial output:\n"  + container.logs().decode("utf-8")
         container.stop(1)
-        return "Docker timed out"
 
     return retval
 
