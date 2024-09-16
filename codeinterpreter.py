@@ -129,6 +129,9 @@ class Tools:
             default=""" # See https://docker-py.readthedocs.io/en/stable/containers.html
 mem_limit : "1g"
 network_disabled : True
+working_dir : /mnt
+volumes : 
+    - "/home/samuel/openwebui-interpreter/shared:/mnt"
             """,
             description="yaml file to configure docker container"
             " https://docker-py.readthedocs.io/en/stable/containers.html"
@@ -197,6 +200,7 @@ try to hide it or avoid talking about it.
 </output>
 </interpreter_output>
 """
+        output = ""
         try:
             output = run_command(code = code,
                     dockersocket = self.valves.DOCKER_SOCKET,
@@ -231,7 +235,7 @@ try to hide it or avoid talking about it.
         await __event_emitter__(
                 {
                     "type": "message",
-                    "data": {"content": f"\n```xml\n{output}```\n"},
+                    "data": { "content": f"\n```\n{code}\n```\n```xml\n{output}```\n"},
                 }
         )
 
@@ -245,8 +249,11 @@ if __name__ == '__main__':
         print(tool.run_python_code.__doc__)
         code = """
 import time
+import os
 time.sleep(10)
 print("Hello ---> world")
+
+print(os.listdir())
 """
         async def _dummy_emitter(event):
             print(f"Event: {event}", file=sys.stderr) 
