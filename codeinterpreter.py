@@ -4,19 +4,25 @@ author: smonux
 author_url: 
 version: 0.1.0
 
-This is an openwebui tool that can run arbitrary python(other languages might be supported in the future)
+This is an openwebui tool that can run arbitrary python(other languages might 
+be added the future).
 
-Further isolation can be achieved by using different docker engines (gVisor).
+It uses docker tooling and further isolation can be achieved by using
+ different docker engines (gVisor's runsc).
+
+The main use case is to couple it with system prompts to implement some
+assistants like a data analyst, a coding instructor, etc..
 
 Inspired in 
  https://github.com/EtiennePerot/open-webui-code-execution
 
-The simplest method to make it work it grant access to the unix socket that controls docker.
+The simplest method to make it work it grant access to the unix socket
+ that controls docker.
 If OpenWebUI is run in a docker machine, it can be done like this
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-OpenWebUI docker image (it has the docker python package installed by default).
+OpenWebUI docker image  has the docker python package installed by default.
 """
 
 import asyncio
@@ -52,6 +58,8 @@ run_python_code_hints = """
 """
 
 def run_command(code, dockersocket, image, docker_args, timeout=5):
+    # Since the interpreter doesn't exit on an exception or a the end of
+    # the "file", it must be modified a bit to make it work.
     thecode = f"""
 
 import sys
@@ -66,8 +74,8 @@ sys.excepthook = exception_hook
 {code}
 
 sys.exit()
-
 """
+
     client = docker.DockerClient(base_url = dockersocket) 
     # args which contradicts those  will get overwritten (silently)
     docker_args.update({ 'image' : image,
