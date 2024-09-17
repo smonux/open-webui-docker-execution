@@ -93,15 +93,24 @@ sys.exit()
     dargs = docker_args.copy()
     dargs.update(unsettable_args)
 
-    client = docker.DockerClient(base_url = dockersocket) 
+    try:
+        client = docker.DockerClient(base_url = dockersocket) 
+    except docker.errors.DockerException as e:
+        raise RuntimeError(f"Failed to connect to Docker socket: {e}")
+
     container = client.containers.run(**dargs)
     s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
     s._sock.send(thecode.encode("utf-8"))
+
     try:
         container.wait(timeout = timeout)
         retval = container.logs().decode("utf-8")
     except requests.exceptions.ReadTimeout:
         retval = "Docker execution timed out. Partial output:\n"  +  \
+                                    container.logs().decode("utf-8")
+        container.stop(1)
+    except Exception as e:
+        retval = f"Unexpected error: {e}\n" + \
                                     container.logs().decode("utf-8")
         container.stop(1)
 
