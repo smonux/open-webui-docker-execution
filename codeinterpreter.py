@@ -76,9 +76,7 @@ sys.excepthook = exception_hook
 sys.exit()
 """
 
-    client = docker.DockerClient(base_url = dockersocket) 
-    # args which contradicts those  will get overwritten (silently)
-    docker_args.update({ 'image' : image,
+    unsettable_args  = { 'image' : image,
                         # Hacky, but using PYTHONSTARTUP  requires uploading files to the image
                         'command' :  "python -i -c 'import sys; sys.ps1, sys.ps2 = \"\", \"\"'",
                         'name' : "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
@@ -86,16 +84,25 @@ sys.exit()
                         # difference?
                         'remove' : True,
                         'auto_remove' : True,
-                        'stdin_open' : True })
+                        'stdin_open' : True }
 
-    container = client.containers.run(**docker_args)
+    if not set(docker_args).isdisjoint(unsettable_args):
+        raise Exception("docker args conflict, these  can't be set by user:" + 
+            ",".join(unsettable_args))
+    # args which contradicts those  will get overwritten 
+    dargs = docker_args.copy()
+    dargs.update(unsettable_args)
+
+    client = docker.DockerClient(base_url = dockersocket) 
+    container = client.containers.run(**dargs)
     s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
     s._sock.send(thecode.encode("utf-8"))
     try:
         container.wait(timeout = timeout)
         retval = container.logs().decode("utf-8")
     except requests.exceptions.ReadTimeout:
-        retval = "Docker execution timed out. Partial output:\n"  + container.logs().decode("utf-8")
+        retval = "Docker execution timed out. Partial output:\n"  +  \
+                                    container.logs().decode("utf-8")
         container.stop(1)
 
     return retval
@@ -126,7 +133,8 @@ class Tools:
             description="docker image to run"
         )
         DOCKER_YAML_OPTIONS : str = Field(
-            default=""" # See https://docker-py.readthedocs.io/en/stable/containers.html
+            default=""" 
+# See https://docker-py.readthedocs.io/en/stable/containers.html
 mem_limit : "1g"
 network_disabled : True
 working_dir : /mnt
@@ -153,12 +161,12 @@ for dist in distributions:
 
 for package_name, version in installed_packages:
     print(f"{package_name}=={version}")
-        """
+"""
 
         packages = run_command(code = code,
                     dockersocket = self.valves.DOCKER_SOCKET,
                     image = self.valves.DOCKER_IMAGE,
-                    docker_args = {},
+                    docker_args = self.docker_args,
                     timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
 
         description = run_python_code_description.format(
@@ -201,6 +209,7 @@ try to hide it or avoid talking about it.
 </interpreter_output>
 """
         output = ""
+        retval = ""
         try:
             output = run_command(code = code,
                     dockersocket = self.valves.DOCKER_SOCKET,
@@ -220,6 +229,13 @@ try to hide it or avoid talking about it.
                     },
                 }
             )
+            await __event_emitter__(
+                {
+                    "type": "message",
+                    "data": { "content": f"\n```\n{code}\n```\n```\n{output}```\n"},
+                }
+            )
+
         except Exception as e:
             await __event_emitter__(
                 {
@@ -231,13 +247,12 @@ try to hide it or avoid talking about it.
                     },
                 }
             )
-
-        await __event_emitter__(
+            await __event_emitter__(
                 {
                     "type": "message",
-                    "data": { "content": f"\n```\n{code}\n```\n```xml\n{output}```\n"},
+                    "data": { "content": f"\n```\n{code}\n```\n```\n{e}```\n"},
                 }
-        )
+            )
 
         return retval
 
