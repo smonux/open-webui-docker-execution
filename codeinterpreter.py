@@ -108,7 +108,7 @@ sys.exit()
     except requests.exceptions.ReadTimeout:
         retval = "Docker execution timed out. Partial output:\n"  +  \
                                     container.logs().decode("utf-8")
-        container.stop(1)
+        container.stop(timeout = 1)
     except Exception as e:
         retval = f"Unexpected error: {e}\n" + \
                                     container.logs().decode("utf-8")
@@ -220,12 +220,13 @@ try to hide it or avoid talking about it.
         output = ""
         retval = ""
         try:
-            output = run_command(code = code,
+            rc_await= asyncio.to_thread(run_command, code = code,
                     dockersocket = self.valves.DOCKER_SOCKET,
                     image = self.valves.DOCKER_IMAGE,
                     docker_args = self.docker_args,
                     timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
 
+            output = await rc_await
             retval = output_template.format(code = code, output = output)
 
             await __event_emitter__(
