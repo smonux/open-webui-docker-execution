@@ -26,10 +26,12 @@ OpenWebUI docker image  has the docker python package installed by default.
 """
 
 import asyncio
+import tarfile
 import docker 
 import json
 import yaml
 import random
+import io
 import requests
 from typing import Callable, Awaitable
 from pydantic import BaseModel, Field
@@ -58,32 +60,10 @@ run_python_code_hints = """
 """
 
 def run_command(code, dockersocket, image, docker_args, timeout=5):
-    # Since the interpreter doesn't exit on an exception or a the end of
-    # the "file", it must be modified a bit to make it work.
-    thecode = f"""
-
-import sys
-
-default_hook = sys.excepthook
-def exception_hook(exc_type, exc_value, tb):
-    default_hook(exc_type,exc_value,tb)
-    sys.exit()
-
-sys.excepthook = exception_hook
-
-{code}
-
-sys.exit()
-"""
-
     unsettable_args  = { 'image' : image,
-                        # Hacky, but using PYTHONSTARTUP  requires uploading files to the image
-                        'command' :  "python -i -c 'import sys; sys.ps1, sys.ps2 = \"\", \"\"'",
+                        'command' :  "python /tmp/app.py",
                         'name' : "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
                         'detach' : True,
-                        # difference?
-                        'remove' : True,
-                        'auto_remove' : True,
                         'stdin_open' : True }
 
     if not set(docker_args).isdisjoint(unsettable_args):
@@ -98,9 +78,18 @@ sys.exit()
     except docker.errors.DockerException as e:
         raise RuntimeError(f"Failed to connect to Docker socket: {e}")
 
-    container = client.containers.run(**dargs)
-    s = container.attach_socket( params={'stdin': 1, 'stream': 1, 'stdout':1})
-    s._sock.send(thecode.encode("utf-8"))
+    container = client.containers.create(**dargs)
+    appfile = io.BytesIO(code.encode('utf-8'))
+
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode='w|') as tar:
+        tarinfo = tarfile.TarInfo("app.py")
+        tarinfo.size = len(appfile.getvalue())
+        appfile.seek(0)
+        tar.addfile(tarinfo, appfile)
+
+    container.put_archive("/tmp", stream.getvalue())
+    container.start()
 
     try:
         container.wait(timeout = timeout)
@@ -108,11 +97,12 @@ sys.exit()
     except requests.exceptions.ReadTimeout:
         retval = "Docker execution timed out. Partial output:\n"  +  \
                                     container.logs().decode("utf-8")
-        container.stop(timeout = 1)
     except Exception as e:
         retval = f"Unexpected error: {e}\n" + \
                                     container.logs().decode("utf-8")
-        container.stop(1)
+    finally:
+        container.stop(timeout = 1)
+        container.remove(force = True)
 
     return retval
 
