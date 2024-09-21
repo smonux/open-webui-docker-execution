@@ -4,8 +4,6 @@ services:
     build: 
       dockerfile_inline: | 
         FROM ghcr.io/open-webui/open-webui:main
-        RUN pip install matplotlib
-        RUN pip install mpl_ascii
         RUN mkdir  /app/backend/data/shared_files
     #    image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
@@ -13,7 +11,6 @@ services:
       - "3000:8080"
     volumes:
       - open-webui:/app/backend/data
-     #- ./codeinterpreter.py:/app/backend/data/tools/codeinterpreter.py
       - ./shared_files:/app/backend/data/shared_files
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always

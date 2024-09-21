@@ -275,7 +275,7 @@ if __name__ == '__main__':
         code = """
 import time
 import os
-time.sleep(10)
+time.sleep(0.5)
 print("Hello ---> world")
 
 print(os.listdir())
