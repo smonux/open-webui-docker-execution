@@ -49,7 +49,7 @@ In addition to the standard library, these packages are avalaible:
 Files referenced in the prompt without absolute path, should be treated relative
 to the current working directory.
 
-It's executed in interactive mode (python -i).
+It's executed in non-interactive mode so everything has to be explicitelly printed to stdout to be seen.
 
 """
 
@@ -58,6 +58,20 @@ run_python_code_hints = """
 :param code: The Python code to execute as a string.
 :return: A string containing the combined standard output and error output and the executed code itself
 """
+
+list_packages = """
+import importlib.metadata
+
+distributions = importlib.metadata.distributions()
+installed_packages = []
+for dist in distributions:
+    args = (dist.metadata['Name'], dist.version)
+    installed_packages.append(args)
+
+for package_name, version in installed_packages:
+    print(f"{package_name}=={version}")
+"""
+
 
 def run_command(code, dockersocket, image, docker_args, timeout=5):
     unsettable_args  = { 'image' : image,
@@ -149,20 +163,7 @@ volumes :
         self.yaml_config = yaml.safe_load(self.valves.DOCKER_YAML_OPTIONS)
         self.docker_args = self.yaml_config
 
-        code = """
-import importlib.metadata
-
-distributions = importlib.metadata.distributions()
-installed_packages = []
-for dist in distributions:
-    args = (dist.metadata['Name'], dist.version)
-    installed_packages.append(args)
-
-for package_name, version in installed_packages:
-    print(f"{package_name}=={version}")
-"""
-
-        packages = run_command(code = code,
+        packages = run_command(code = list_packages,
                     dockersocket = self.valves.DOCKER_SOCKET,
                     image = self.valves.DOCKER_IMAGE,
                     docker_args = self.docker_args,
@@ -209,6 +210,7 @@ try to hide it or avoid talking about it.
 """
         output = ""
         retval = ""
+        event_description = ""
         try:
             rc_await= asyncio.to_thread(run_command, code = code,
                     dockersocket = self.valves.DOCKER_SOCKET,
@@ -218,41 +220,27 @@ try to hide it or avoid talking about it.
 
             output = await rc_await
             retval = output_template.format(code = code, output = output)
-
-            await __event_emitter__(
-                {
-                    "type": "status",
-                    "data": {
-                        "description": "Python code executed successfully",
-                        "status": "complete",
-                        "done": True,
-                    },
-                }
-            )
-            await __event_emitter__(
-                {
-                    "type": "message",
-                    "data": { "content": f"\n```\n{code}\n```\n```\n{output}```\n"},
-                }
-            )
-
+            event_description = "Python code executed successfully"
         except Exception as e:
+            output = str(e)
+            event_description = f"Error executing Python code: {e}"
+        finally:
             await __event_emitter__(
-                {
-                    "type": "status",
-                    "data": {
-                        "description": f"Error executing Python code: {e}",
-                        "status": "complete",
-                        "done": True,
-                    },
-                }
-            )
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": event_description,
+                            "status": "complete",
+                            "done": True,
+                            },
+                        }
+                    )
             await __event_emitter__(
-                {
-                    "type": "message",
-                    "data": { "content": f"\n```\n{code}\n```\n```\n{e}```\n"},
-                }
-            )
+                    {
+                        "type": "message",
+                        "data": { "content": f"\n---\n```\n{code}\n```\n```\n{output}```\n---\n"},
+                        }
+                    )
 
         return retval
 
