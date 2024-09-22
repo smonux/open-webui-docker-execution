@@ -252,7 +252,7 @@ try to hide it or avoid talking about it.
             await __event_emitter__(
                     {
                         "type": "message",
-                        "data": { event_data_template.format(code = code,
+                        "data": { "content" :  event_data_template.format(code = code,
                                      output = output,
                                      ts = datetime.datetime.now().isoformat()) }})
 
