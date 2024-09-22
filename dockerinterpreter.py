@@ -22,9 +22,14 @@ If OpenWebUI is run in a docker machine, it can be done like this
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+The default yaml file used to set docker options by default mounts as
+ a shared directory that's unlikely to exist in your computer. Remember 
+to change it or it will fail
+
 OpenWebUI docker image  has the docker python package installed by default.
 """
 
+import datetime
 import asyncio
 import tarfile
 import docker 
@@ -70,6 +75,19 @@ for dist in distributions:
 
 for package_name, version in installed_packages:
     print(f"{package_name}=={version}")
+"""
+
+event_data_template = """
+---
+### {ts}
+```
+{code}
+```
+
+```
+{output}
+```
+---
 """
 
 
@@ -234,9 +252,9 @@ try to hide it or avoid talking about it.
             await __event_emitter__(
                     {
                         "type": "message",
-                        "data": { "content": f"\n---\n```\n{code}\n```\n```\n{output}```\n---\n"},
-                        }
-                    )
+                        "data": { event_data_template.format(code = code,
+                                     output = output,
+                                     ts = datetime.datetime.now().isoformat()) }})
 
         return retval
 
