@@ -1,6 +1,6 @@
 import unittest
 import asyncio
-from codeinterpreter import Tools
+from dockerinterpreter import Tools
 from unittest.mock import AsyncMock
 
 class TestCodeInterpreter(unittest.IsolatedAsyncioTestCase):

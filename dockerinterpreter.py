@@ -127,10 +127,6 @@ class Tools:
             description="The timeout value in seconds for the code interpreter"
                         " subprocess.",
         )
-        SHARED_FILES_PATH: str = Field(
-            default="/app/backend/data/shared_files",
-            description="The path to the shared files directory.",
-        )
         ADDITIONAL_CONTEXT: str = Field(
             default="",
             description="Additional context to be included in the tool description.",
