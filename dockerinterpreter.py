@@ -189,9 +189,23 @@ volumes :
         )
 
         description = description.replace("\n", ":")
+        Tools.__run_python_code.__doc__ = "\n" + description + run_python_code_hints
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
+        Tools.run_python_code_2.__doc__ = "\n" + description + run_python_code_hints
 
     async def run_python_code(
+        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
+    ) -> str:
+        """docstring placeholder"""
+        return await self.__run_python_code(code, __event_emitter__)
+      
+    async def run_python_code_2(
+        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
+    ) -> str:
+        """docstring placeholder"""
+        return await self.__run_python_code(code, __event_emitter__)
+
+    async def __run_python_code(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
     ) -> str:
         """docstring placeholder"""
@@ -257,5 +271,3 @@ try to hide it or avoid talking about it.
                                      ts = datetime.datetime.now().isoformat()) }})
 
         return retval
-
-
