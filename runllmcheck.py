@@ -1,9 +1,10 @@
 import sys
 import json
+import os
 import openai
 from dockerinterpreter import Tools
 
-def run_llm_check(prompt):
+def run_llm_check(prompt, model="gpt-4-0613"):
     tools = Tools()
     
     messages = [
@@ -29,7 +30,7 @@ def run_llm_check(prompt):
     ]
     
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-0613",
+        model=model,
         messages=messages,
         functions=functions,
         function_call="auto"
@@ -53,7 +54,7 @@ def run_llm_check(prompt):
             )
             
             second_response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-0613",
+                model=model,
                 messages=messages
             )
             
@@ -62,10 +63,18 @@ def run_llm_check(prompt):
         return response_message["content"]
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python runllmcheck.py \"<prompt>\"")
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage: python runllmcheck.py \"<prompt>\" [<model>]")
         sys.exit(1)
     
     prompt = sys.argv[1]
-    result = run_llm_check(prompt)
+    model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4-0613"
+    
+    # Set OpenAI API key from environment variable
+    openai.api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai.api_key:
+        print("Error: OPENAI_API_KEY environment variable is not set.")
+        sys.exit(1)
+    
+    result = run_llm_check(prompt, model)
     print(result)
