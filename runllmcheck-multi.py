@@ -74,7 +74,7 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LLM check with multiple function calls.")
     parser.add_argument("prompt", help="The prompt to send to the LLM")
-    parser.add_argument("--model", default="gpt-4-0613", help="The model to use (default: gpt-4-0613)")
+    parser.add_argument("--model", default="gpt-4o-mini", help="The model to use (default: gpt-4-0613)")
     parser.add_argument("--max-iterations", type=int, default=3, help="Maximum number of function calls (default: 3)")
     args = parser.parse_args()
     
