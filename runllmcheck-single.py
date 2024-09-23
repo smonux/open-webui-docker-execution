@@ -79,7 +79,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     prompt = sys.argv[1]
-    model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4-0613"
+    model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4o-mini"
     
     # OpenAI client will automatically use the OPENAI_API_KEY environment variable
     if "OPENAI_API_KEY" not in os.environ:

@@ -68,14 +68,17 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
         else:
             # If no function was called, we're done
             break
-    
+    second_response = client.chat.completions.create(
+                model=model,
+                messages=messages
+    )
     # Return the last message from the assistant
-    return messages
+    return second_response.choices[0].message.content
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LLM check with multiple function calls.")
     parser.add_argument("prompt", help="The prompt to send to the LLM")
-    parser.add_argument("--model", default="gpt-4o-mini", help="The model to use (default: gpt-4-0613)")
+    parser.add_argument("--model", default="gpt-4o-mini", help="The model to use (default: gpt-4o-mini)")
     parser.add_argument("--max-iterations", type=int, default=3, help="Maximum number of function calls (default: 3)")
     args = parser.parse_args()
     
@@ -85,4 +88,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     result = run_llm_check(args.prompt, args.model, args.max_iterations)
-    print(pprint.pp(result))
+    print(result)
