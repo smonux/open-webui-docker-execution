@@ -13,7 +13,7 @@ def run_llm_check(prompt, model="gpt-4-0613"):
         {"role": "user", "content": prompt}
     ]
     
-    tools = [
+    available_tools = [
         {
             "type": "function",
             "function": {
@@ -36,7 +36,7 @@ def run_llm_check(prompt, model="gpt-4-0613"):
     response = client.chat.completions.create(
         model=model,
         messages=messages,
-        tools=tools,
+        tools=available_tools,
         tool_choice="auto"
     )
     
