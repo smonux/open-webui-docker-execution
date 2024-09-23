@@ -257,5 +257,3 @@ try to hide it or avoid talking about it.
                                      ts = datetime.datetime.now().isoformat()) }})
 
         return retval
-
-

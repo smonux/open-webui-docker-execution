@@ -3,6 +3,7 @@ import json
 import os
 from openai import OpenAI
 from dockerinterpreter import Tools
+import asyncio
 
 def run_llm_check(prompt, model="gpt-4-0613"):
     client = OpenAI()
@@ -48,7 +49,11 @@ def run_llm_check(prompt, model="gpt-4-0613"):
         function_args = json.loads(tool_call.function.arguments)
         
         if function_name == "run_python_code":
-            code_output = tools.run_python_code(function_args["code"])
+
+            async def _dummy_emitter(event):
+                print(f"Event: {event}", file=sys.stderr) 
+            code_output = asyncio.run(tools.run_python_code(function_args["code"], _dummy_emitter))
+
             messages.append(response_message)
             messages.append(
                 {
