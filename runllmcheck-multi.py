@@ -5,6 +5,7 @@ from openai import OpenAI
 from dockerinterpreter import Tools
 import asyncio
 import argparse
+import pprint
 
 def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
     client = OpenAI()
@@ -69,7 +70,7 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
             break
     
     # Return the last message from the assistant
-    return messages[-1].content
+    return messages
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LLM check with multiple function calls.")
@@ -84,4 +85,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     result = run_llm_check(args.prompt, args.model, args.max_iterations)
-    print(result)
+    print(pprint.pp(result))
