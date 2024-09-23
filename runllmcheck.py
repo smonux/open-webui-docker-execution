@@ -75,11 +75,11 @@ def run_llm_check(prompt, model="gpt-4-0613"):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python runllmcheck.py \"<prompt>\" [<model>]")
+        print("Usage: python runllmcheck-single.py \"<prompt>\" [<model>]")
         sys.exit(1)
     
     prompt = sys.argv[1]
-    model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4o-mini"
+    model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4-0613"
     
     # OpenAI client will automatically use the OPENAI_API_KEY environment variable
     if "OPENAI_API_KEY" not in os.environ:
