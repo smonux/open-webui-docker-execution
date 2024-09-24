@@ -171,6 +171,10 @@ volumes :
             description="yaml file to configure docker container"
             " https://docker-py.readthedocs.io/en/stable/containers.html"
         )
+        ADDITIONAL_RUNS: int = Field(
+            default=1,
+            description="Number of additional run_python_code_N functions to create"
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -191,22 +195,19 @@ volumes :
         description = description.replace("\n", ":")
         Tools.__run_python_code.__doc__ = "\n" + description + run_python_code_hints
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
-        Tools.run_python_code_1.__doc__ = "\n" + description + run_python_code_hints
-        Tools.run_python_code_2.__doc__ = "\n" + description + run_python_code_hints
+
+        # Dynamically create additional run_python_code_N functions
+        for i in range(1, self.valves.ADDITIONAL_RUNS + 1):
+            func_name = f"run_python_code_{i}"
+            setattr(Tools, func_name, self._create_run_python_code_func(func_name))
+            getattr(Tools, func_name).__doc__ = "\n" + description + run_python_code_hints
+
+    def _create_run_python_code_func(self, func_name):
+        async def run_python_code_n(self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]) -> str:
+            return await self.__run_python_code(code, __event_emitter__)
+        return run_python_code_n
 
     async def run_python_code(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
-    ) -> str:
-        """docstring placeholder"""
-        return await self.__run_python_code(code, __event_emitter__)
-      
-    async def run_python_code_1(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
-    ) -> str:
-        """docstring placeholder"""
-        return await self.__run_python_code(code, __event_emitter__)
-      
-    async def run_python_code_2(
         self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
     ) -> str:
         """docstring placeholder"""
