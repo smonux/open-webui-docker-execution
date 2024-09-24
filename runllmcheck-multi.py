@@ -11,8 +11,12 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
     client = OpenAI()
     tools = Tools()
     
+    # Get the number of available run_python_code_* functions
+    available_functions = [func for func in dir(tools) if func.startswith("run_python_code_")]
+    max_iterations = len(available_functions)
+    
     messages = [
-        {"role": "system", "content": "You are a helpful assistant with access to a Python code interpreter. Use the run_python_code function when you need to execute Python code."},
+        {"role": "system", "content": "You are a helpful assistant with access to multiple Python code interpreter functions. Use the run_python_code_* functions when you need to execute Python code, where * is a number."},
         {"role": "user", "content": prompt}
     ]
     
@@ -20,8 +24,8 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
         {
             "type": "function",
             "function": {
-                "name": "run_python_code",
-                "description": tools.run_python_code.__doc__,
+                "name": func,
+                "description": getattr(tools, func).__doc__,
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -34,14 +38,14 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
                 }
             }
         }
+        for func in available_functions
     ]
     
     for iteration in range(max_iterations):
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            tools=available_tools,
-            tool_choice="auto"
+            tools=available_tools
         )
         
         response_message = response.choices[0].message
@@ -52,10 +56,10 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
             
-            if function_name == "run_python_code":
+            if function_name in available_functions:
                 async def _dummy_emitter(event):
                     print(f"Event: {event}", file=sys.stderr) 
-                code_output = asyncio.run(tools.run_python_code(function_args["code"], _dummy_emitter))
+                code_output = asyncio.run(getattr(tools, function_name)(function_args["code"], _dummy_emitter))
 
                 messages.append(
                     {
@@ -79,7 +83,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LLM check with multiple function calls.")
     parser.add_argument("prompt", help="The prompt to send to the LLM")
     parser.add_argument("--model", default="gpt-4o-mini", help="The model to use (default: gpt-4o-mini)")
-    parser.add_argument("--max-iterations", type=int, default=3, help="Maximum number of function calls (default: 3)")
     args = parser.parse_args()
     
     # OpenAI client will automatically use the OPENAI_API_KEY environment variable
@@ -87,5 +90,5 @@ if __name__ == "__main__":
         print("Error: OPENAI_API_KEY environment variable is not set.")
         sys.exit(1)
     
-    result = run_llm_check(args.prompt, args.model, args.max_iterations)
+    result = run_llm_check(args.prompt, args.model)
     print(result)
