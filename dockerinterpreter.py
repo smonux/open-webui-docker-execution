@@ -279,3 +279,74 @@ try to hide it or avoid talking about it.
                                      ts = datetime.datetime.now().isoformat()) }})
 
         return retval
+
+    async def run_llm_check(self, prompt, model="gpt-4o-mini", max_iterations=3):
+        client = OpenAI()
+        
+        # Get the number of available run_python_code_* functions
+        available_functions = [func for func in dir(self) if func.startswith("run_python_code_")]
+        max_iterations = len(available_functions)
+        
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant with access to multiple Python code interpreter functions. Use the run_python_code_* functions when you need to execute Python code, where * is a number."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        available_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": func,
+                    "description": getattr(self, func).__doc__,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "description": "The Python code to execute"
+                            }
+                        },
+                        "required": ["code"]
+                    }
+                }
+            }
+            for func in available_functions
+        ]
+        
+        for iteration in range(max_iterations):
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=available_tools
+            )
+            
+            response_message = response.choices[0].message
+            messages.append(response_message)
+            
+            if response_message.tool_calls:
+                tool_call = response_message.tool_calls[0]
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+                
+                if function_name in available_functions:
+                    async def _dummy_emitter(event):
+                        print(f"Event: {event}", file=sys.stderr) 
+                    code_output = await getattr(self, function_name)(function_args["code"], _dummy_emitter)
+
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "name": function_name,
+                            "content": code_output,
+                        }
+                    )
+            else:
+                # If no function was called, we're done
+                break
+        second_response = client.chat.completions.create(
+                    model=model,
+                    messages=messages
+        )
+        # Return the last message from the assistant
+        return second_response.choices[0].message.content
