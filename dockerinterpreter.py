@@ -172,7 +172,7 @@ volumes :
             " https://docker-py.readthedocs.io/en/stable/containers.html"
         )
         ADDITIONAL_RUNS: int = Field(
-            default=1,
+            default=3,
             description="Number of additional run_python_code_N functions to create"
         )
 
