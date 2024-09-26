@@ -5,9 +5,8 @@ from openai import OpenAI
 from dockerinterpreter import Tools
 import asyncio
 import argparse
-import pprint
 
-def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
+def run_llm_check(prompt, model="gpt-4o-mini", max_iterations=3):
     client = OpenAI()
     tools = Tools()
     
