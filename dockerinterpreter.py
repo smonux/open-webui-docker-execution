@@ -1,32 +1,35 @@
 """
 title: DockerInterpreter Tool
 author: smonux
-author_url: 
-version: 0.1.0
+author_url:  https://github.com/smonux/open-webui-docker-execution
+version: 0.3.0
 
 This is an openwebui tool that can run arbitrary python(other languages might 
 be added the future).
 
 It uses docker tooling and further isolation can be achieved by using
- different docker engines (gVisor's runsc).
+ different docker engines (gVisor's runsc). The openwebui docker image 
+has every package needed to run it.
 
 The main use case is to couple it with system prompts to implement some
-assistants like a data analyst, a coding instructor, etc..
+assistants like a data analyst, a coding instructor, etc... 
 
-Inspired in 
+It's based/inspired in:
  https://github.com/EtiennePerot/open-webui-code-execution
 
-The simplest method to make it work it grant access to the unix socket
- that controls docker.
-If OpenWebUI is run in a docker machine, it can be done like this
+The simplest method to make it work is to  grant access to the unix socket
+that controls docker to oai docker container.
+
+If OpenWebUI is run in a docker machine, it can be done like this in compose:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-The default yaml file used to set docker options by default mounts as
- a shared directory that's unlikely to exist in your computer. Remember 
-to change it or it will fail
+BEWARE: The default yaml file shares /tmp with the docker instance. 
 
-OpenWebUI docker image  has the docker python package installed by default.
+
+The python alpine image is not very useful, you may want to use other,
+better equipped image, but pull it first or the UI will freeze.
+
 """
 
 import datetime
@@ -166,7 +169,7 @@ mem_limit : "1g"
 network_disabled : True
 working_dir : /mnt
 volumes : 
-    - "/home/samuel/openwebui-interpreter/shared:/mnt"
+    - "/tmp:/mnt"
             """,
             description="yaml file to configure docker container"
             " https://docker-py.readthedocs.io/en/stable/containers.html"

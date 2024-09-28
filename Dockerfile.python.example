@@ -1,0 +1,8 @@
+FROM python:3.11
+
+RUN apt-get update
+COPY  requirements-pythonds.txt .
+RUN pip install --no-cache-dir -r requirements-pythonds.txt
+RUN apt-get install -y  gnuplot
+
+CMD ["python", "/tmp/app.py"]
