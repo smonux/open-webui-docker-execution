@@ -82,7 +82,10 @@ for package_name, version in installed_packages:
 
 event_data_template = """
 ---
-#### Execution: {ts}
+<details>
+  <summary>Execution: {ts}</summary>
+
+##### Input:
 ```
 {code}
 ```
@@ -91,6 +94,8 @@ event_data_template = """
 {output}
 ```
 ---
+
+</details>
 """
 
 
