@@ -2,7 +2,7 @@
 title: DockerInterpreter Tool
 author: smonux
 author_url:  https://github.com/smonux/open-webui-docker-execution
-version: 0.3.0
+version: 0.0.4
 
 This is an openwebui tool that can run arbitrary python(other languages might 
 be added the future).
