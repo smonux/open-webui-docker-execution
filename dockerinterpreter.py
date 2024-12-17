@@ -35,7 +35,7 @@ better equipped image, but pull it first or the UI will freeze.
 import datetime
 import asyncio
 import tarfile
-import docker 
+import docker
 import json
 import yaml
 import random
@@ -100,29 +100,33 @@ event_data_template = """
 
 
 def run_command(code, dockersocket, image, docker_args, timeout=5):
-    unsettable_args  = { 'image' : image,
-                        'command' :  "python /tmp/app.py",
-                        'name' : "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
-                        'detach' : True,
-                        'stdin_open' : True }
+    unsettable_args = {
+        "image": image,
+        "command": "python /tmp/app.py",
+        "name": "oai-docker-interpreter-" + str(random.randint(0, 999999999)),
+        "detach": True,
+        "stdin_open": True,
+    }
 
     if not set(docker_args).isdisjoint(unsettable_args):
-        raise Exception("docker args conflict, these  can't be set by user:" + 
-            ",".join(unsettable_args))
-    # args which contradicts those  will get overwritten 
+        raise Exception(
+            "docker args conflict, these  can't be set by user:"
+            + ",".join(unsettable_args)
+        )
+    # args which contradicts those  will get overwritten
     dargs = docker_args.copy()
     dargs.update(unsettable_args)
 
     try:
-        client = docker.DockerClient(base_url = dockersocket) 
+        client = docker.DockerClient(base_url=dockersocket)
     except docker.errors.DockerException as e:
         raise RuntimeError(f"Failed to connect to Docker socket: {e}")
 
     container = client.containers.create(**dargs)
-    appfile = io.BytesIO(code.encode('utf-8'))
+    appfile = io.BytesIO(code.encode("utf-8"))
 
     stream = io.BytesIO()
-    with tarfile.open(fileobj=stream, mode='w|') as tar:
+    with tarfile.open(fileobj=stream, mode="w|") as tar:
         tarinfo = tarfile.TarInfo("app.py")
         tarinfo.size = len(appfile.getvalue())
         appfile.seek(0)
@@ -132,26 +136,28 @@ def run_command(code, dockersocket, image, docker_args, timeout=5):
     container.start()
 
     try:
-        container.wait(timeout = timeout)
+        container.wait(timeout=timeout)
         retval = container.logs().decode("utf-8")
     except requests.exceptions.ReadTimeout:
-        retval = "Docker execution timed out. Partial output:\n"  +  \
-                                    container.logs().decode("utf-8")
+        retval = (
+            "Docker execution timed out. Partial output:\n"
+            + container.logs().decode("utf-8")
+        )
     except Exception as e:
-        retval = f"Unexpected error: {e}\n" + \
-                                    container.logs().decode("utf-8")
+        retval = f"Unexpected error: {e}\n" + container.logs().decode("utf-8")
     finally:
-        container.stop(timeout = 1)
-        container.remove(force = True)
+        container.stop(timeout=1)
+        container.remove(force=True)
 
     return retval
+
 
 class Tools:
     class Valves(BaseModel):
         CODE_INTERPRETER_TIMEOUT: int = Field(
             default=120,
             description="The timeout value in seconds for the code interpreter"
-                        " subprocess.",
+            " subprocess.",
         )
         ADDITIONAL_CONTEXT: str = Field(
             default="",
@@ -160,14 +166,13 @@ class Tools:
         DOCKER_SOCKET: str = Field(
             default="unix://var/run/docker.sock",
             description="The only tested is unix://var/run/docker.sock but "
-                        " others could work. If OpenWebUI is run in docker mode "
-                        "sharing the host socket should be enough"
+            " others could work. If OpenWebUI is run in docker mode "
+            "sharing the host socket should be enough",
         )
         DOCKER_IMAGE: str = Field(
-            default="python:3.11-alpine",
-            description="docker image to run"
+            default="python:3.11-alpine", description="docker image to run"
         )
-        DOCKER_YAML_OPTIONS : str = Field(
+        DOCKER_YAML_OPTIONS: str = Field(
             default=""" 
 # See https://docker-py.readthedocs.io/en/stable/containers.html
 mem_limit : "1g"
@@ -177,7 +182,7 @@ volumes :
     - "/tmp:/mnt"
             """,
             description="yaml file to configure docker container"
-            " https://docker-py.readthedocs.io/en/stable/containers.html"
+            " https://docker-py.readthedocs.io/en/stable/containers.html",
         )
 
     def __init__(self):
@@ -185,22 +190,23 @@ volumes :
         self.yaml_config = yaml.safe_load(self.valves.DOCKER_YAML_OPTIONS)
         self.docker_args = self.yaml_config
 
-        packages = run_command(code = list_packages,
-                    dockersocket = self.valves.DOCKER_SOCKET,
-                    image = self.valves.DOCKER_IMAGE,
-                    docker_args = self.docker_args,
-                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
+        packages = run_command(
+            code=list_packages,
+            dockersocket=self.valves.DOCKER_SOCKET,
+            image=self.valves.DOCKER_IMAGE,
+            docker_args=self.docker_args,
+            timeout=self.valves.CODE_INTERPRETER_TIMEOUT,
+        )
 
         description = run_python_code_description.format(
-            packages = packages,
-            additional_context=self.valves.ADDITIONAL_CONTEXT
+            packages=packages, additional_context=self.valves.ADDITIONAL_CONTEXT
         )
 
         description = description.replace("\n", ":")
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
 
     async def run_python_code(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]] 
+        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
     ) -> str:
         """docstring placeholder"""
         await __event_emitter__(
@@ -234,34 +240,43 @@ try to hide it or avoid talking about it.
         retval = ""
         event_description = ""
         try:
-            rc_await= asyncio.to_thread(run_command, code = code,
-                    dockersocket = self.valves.DOCKER_SOCKET,
-                    image = self.valves.DOCKER_IMAGE,
-                    docker_args = self.docker_args,
-                    timeout= self.valves.CODE_INTERPRETER_TIMEOUT)
+            rc_await = asyncio.to_thread(
+                run_command,
+                code=code,
+                dockersocket=self.valves.DOCKER_SOCKET,
+                image=self.valves.DOCKER_IMAGE,
+                docker_args=self.docker_args,
+                timeout=self.valves.CODE_INTERPRETER_TIMEOUT,
+            )
 
             output = await rc_await
-            retval = output_template.format(code = code, output = output)
+            retval = output_template.format(code=code, output=output)
             event_description = "Python code executed successfully"
         except Exception as e:
             output = str(e)
             event_description = f"Error executing Python code: {e}"
         finally:
             await __event_emitter__(
-                    {
-                        "type": "status",
-                        "data": {
-                            "description": event_description,
-                            "status": "complete",
-                            "done": True,
-                            },
-                        }
-                    )
+                {
+                    "type": "status",
+                    "data": {
+                        "description": event_description,
+                        "status": "complete",
+                        "done": True,
+                    },
+                }
+            )
             await __event_emitter__(
-                    {
-                        "type": "message",
-                        "data": { "content" :  event_data_template.format(code = code,
-                                     output = output,
-                                     ts = datetime.datetime.now().isoformat()) }})
+                {
+                    "type": "message",
+                    "data": {
+                        "content": event_data_template.format(
+                            code=code,
+                            output=output,
+                            ts=datetime.datetime.now().isoformat(),
+                        )
+                    },
+                }
+            )
 
         return retval
