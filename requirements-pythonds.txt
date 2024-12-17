@@ -4,3 +4,15 @@ scipy
 py-gnuplot
 statsmodels
 scikit-learn
+matplotlib
+pypdf
+python-docx
+openpyxl
+XlsxWriter
+xlrd
+xlwt
+reportlab
+python-pptx
+PyPDF2
+pillow
+pdf2image

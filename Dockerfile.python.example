@@ -4,5 +4,6 @@ RUN apt-get update
 COPY  requirements-pythonds.txt .
 RUN pip install --no-cache-dir -r requirements-pythonds.txt
 RUN apt-get install -y  gnuplot
+RUN apt-get install -y poppler-utils 
 
 CMD ["python", "/tmp/app.py"]
