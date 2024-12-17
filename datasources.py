@@ -43,7 +43,7 @@ def printTable(myDict, colList=None):
     Author: Thierry Husson - Use it as you want but don't blame me.
     https://stackoverflow.com/questions/17330139/python-printing-a-dictionary-as-a-horizontal-table-with-headers
     """
-        colList = list(myDict[0].keys() if myDict else [])
+    colList = list(myDict[0].keys() if myDict else [])
     myList = [colList]  # 1st row = header
     for item in myDict:
         myList.append(

@@ -4,15 +4,15 @@ author: smonux
 author_url:  https://github.com/smonux/open-webui-docker-execution
 version: 0.0.4
 
-This is an openwebui tool that can run arbitrary python(other languages might 
+This is an openwebui tool that can run arbitrary python(other languages might
 be added the future).
 
 It uses docker tooling and further isolation can be achieved by using
- different docker engines (gVisor's runsc). The openwebui docker image 
+ different docker engines (gVisor's runsc). The openwebui docker image
 has every package needed to run it.
 
 The main use case is to couple it with system prompts to implement some
-assistants like a data analyst, a coding instructor, etc... 
+assistants like a data analyst, a coding instructor, etc...
 
 It's based/inspired in:
  https://github.com/EtiennePerot/open-webui-code-execution
@@ -24,7 +24,7 @@ If OpenWebUI is run in a docker machine, it can be done like this in compose:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-BEWARE: The default yaml file shares /tmp with the docker instance. 
+BEWARE: The default yaml file shares /tmp with the docker instance.
 
 
 The python alpine image is not very useful, you may want to use other,
@@ -36,7 +36,6 @@ import datetime
 import asyncio
 import tarfile
 import docker
-import json
 import yaml
 import random
 import io
@@ -98,8 +97,35 @@ event_data_template = """
 </details>
 """
 
+matplotlib_template = """
+import os
+os.environ['MPL_BACKEND'] = 'Agg'
+
+import matplotlib.pyplot as plt
+import atexit
+import tempfile
+
+
+def save_open_figures():
+    plot_dir = {plot_dir}
+    i = 1
+    for fig in plt.get_fignums():
+        filename = f"plot_" + i +".jpg"
+        plt.figure(fig)
+        plt.savefig(plot_dir + "/" +  filename)
+        i += 1
+
+atexit.register(save_open_figures)
+
+"""
+
 
 def run_command(code, dockersocket, image, docker_args, timeout=5):
+    PLOT_DIR = "/tmp/figures"
+    code_prefix = matplotlib_template.format(plot_dir=PLOT_DIR)
+    code = code_prefix + code
+    images = []
+
     unsettable_args = {
         "image": image,
         "command": "python /tmp/app.py",
@@ -149,7 +175,7 @@ def run_command(code, dockersocket, image, docker_args, timeout=5):
         container.stop(timeout=1)
         container.remove(force=True)
 
-    return retval
+    return {"output": retval, "images": images}
 
 
 class Tools:
@@ -206,7 +232,11 @@ volumes :
         Tools.run_python_code.__doc__ = "\n" + description + run_python_code_hints
 
     async def run_python_code(
-        self, code: str, __event_emitter__: Callable[[dict], Awaitable[None]]
+        self,
+        code: str,
+        __event_emitter__: Callable[[dict], Awaitable[None]],
+        __messages__: dict,
+        __model__: str,
     ) -> str:
         """docstring placeholder"""
         await __event_emitter__(

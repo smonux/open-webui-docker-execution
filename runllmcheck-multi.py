@@ -7,15 +7,19 @@ import asyncio
 import argparse
 import pprint
 
+
 def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
     client = OpenAI()
     tools = Tools()
-    
+
     messages = [
-        {"role": "system", "content": "You are a helpful assistant with access to a Python code interpreter. Use the run_python_code function when you need to execute Python code."},
-        {"role": "user", "content": prompt}
+        {
+            "role": "system",
+            "content": "You are a helpful assistant with access to a Python code interpreter. Use the run_python_code function when you need to execute Python code.",
+        },
+        {"role": "user", "content": prompt},
     ]
-    
+
     available_tools = [
         {
             "type": "function",
@@ -27,35 +31,36 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
                     "properties": {
                         "code": {
                             "type": "string",
-                            "description": "The Python code to execute"
+                            "description": "The Python code to execute",
                         }
                     },
-                    "required": ["code"]
-                }
-            }
+                    "required": ["code"],
+                },
+            },
         }
     ]
-    
+
     for iteration in range(max_iterations):
         response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=available_tools,
-            tool_choice="auto"
+            model=model, messages=messages, tools=available_tools, tool_choice="auto"
         )
-        
+
         response_message = response.choices[0].message
         messages.append(response_message)
-        
+
         if response_message.tool_calls:
             tool_call = response_message.tool_calls[0]
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
-            
+
             if function_name == "run_python_code":
+
                 async def _dummy_emitter(event):
-                    print(f"Event: {event}", file=sys.stderr) 
-                code_output = asyncio.run(tools.run_python_code(function_args["code"], _dummy_emitter))
+                    print(f"Event: {event}", file=sys.stderr)
+
+                code_output = asyncio.run(
+                    tools.run_python_code(function_args["code"], _dummy_emitter)
+                )
 
                 messages.append(
                     {
@@ -68,24 +73,31 @@ def run_llm_check(prompt, model="gpt-4-0613", max_iterations=3):
         else:
             # If no function was called, we're done
             break
-    second_response = client.chat.completions.create(
-                model=model,
-                messages=messages
-    )
+    second_response = client.chat.completions.create(model=model, messages=messages)
     # Return the last message from the assistant
     return second_response.choices[0].message.content
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run LLM check with multiple function calls.")
+    parser = argparse.ArgumentParser(
+        description="Run LLM check with multiple function calls."
+    )
     parser.add_argument("prompt", help="The prompt to send to the LLM")
-    parser.add_argument("--model", default="gpt-4o-mini", help="The model to use (default: gpt-4o-mini)")
-    parser.add_argument("--max-iterations", type=int, default=3, help="Maximum number of function calls (default: 3)")
+    parser.add_argument(
+        "--model", default="gpt-4o-mini", help="The model to use (default: gpt-4o-mini)"
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=3,
+        help="Maximum number of function calls (default: 3)",
+    )
     args = parser.parse_args()
-    
+
     # OpenAI client will automatically use the OPENAI_API_KEY environment variable
     if "OPENAI_API_KEY" not in os.environ:
         print("Error: OPENAI_API_KEY environment variable is not set.")
         sys.exit(1)
-    
+
     result = run_llm_check(args.prompt, args.model, args.max_iterations)
     print(result)
