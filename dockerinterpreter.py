@@ -50,15 +50,15 @@ from pathlib import Path
 try:
     from openwebui.config import CACHE_DIR
 except Exception:
-    print("testing environment. Setting CACHE_DIR to the cwd")
-    CACHE_DIR = "."
+    print("Setting CACHE_DIR to 'data'")
+    CACHE_DIR = "data/cache"
 
 IMAGE_CACHE_DIR = Path(CACHE_DIR).joinpath("./image/generations/")
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 run_python_code_description = """
 Executes the given Python code and returns the standard output and the standard
-error. 
+error.
 
 In addition to the standard library, these packages are avalaible:
 
@@ -145,7 +145,7 @@ output_template = """
 This is the output of the tool called "DockerInterpreter", appended here for
 reference in the response. Use it to answer the query of the user.
 
-The user know use have access to the tool and can inspect your calls, don't 
+The user know use have access to the tool and can inspect your calls, don't
 try to hide it or avoid talking about it.
 </description>
 <executed_code>
@@ -274,13 +274,13 @@ class Tools:
             description="docker image to run",
         )
         DOCKER_YAML_OPTIONS: str = Field(
-            default=""" 
+            default="""
     # See https://docker-py.readthedocs.io/en/stable/containers.html
     mem_limit : "1g"
     network_disabled : True
     working_dir : /mnt
-    volumes : 
-        - "/tmp:/mnt"
+    volumes :
+        - "/home/samuel/hosting/shared_files:/mnt"
             """,
             description="yaml file to configure docker container"
             " https://docker-py.readthedocs.io/en/stable/containers.html",
@@ -376,8 +376,8 @@ class Tools:
                     new_message["content"].append(
                         {"type": "image_url", "image_url": {"url": data_image}}
                     )
-            if images:
-                __messages__.append(new_message)
+            if images and self.valves.ENABLE_IMAGE_GENERATION:
+                __messages__.insert(-1, new_message)
             event_description = "Python code executed successfully"
         except Exception as e:
             output = str(e)
@@ -394,7 +394,10 @@ class Tools:
                 }
             )
 
-            images_as_md = [f"![{im}](/cache/generations/{im})\n" for im in image_names]
+            images_as_md = [
+                f"![{im.strip()}](/cache/image/generations/{im.strip()})"
+                for im in image_names
+            ]
             await __event_emitter__(
                 {
                     "type": "message",
@@ -403,7 +406,7 @@ class Tools:
                             code=code,
                             output=output,
                             ts=datetime.datetime.now().isoformat(),
-                            images_as_md=images_as_md,
+                            images_as_md="\n".join(images_as_md),
                         )
                     },
                 }
