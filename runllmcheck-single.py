@@ -6,8 +6,8 @@ from dockerinterpreter import Tools
 import asyncio
 
 
-def run_llm_check(prompt, model="gpt-4-0613"):
-    client = OpenAI()
+def run_llm_check(prompt, model="gpt-4o-mini", api_url=None):
+    client = OpenAI(api_base=api_url) if api_url else OpenAI()
     tools = Tools()
 
     messages = [
@@ -55,7 +55,12 @@ def run_llm_check(prompt, model="gpt-4-0613"):
                 print(f"Event: {event}", file=sys.stderr)
 
             code_output = asyncio.run(
-                tools.run_python_code(function_args["code"], _dummy_emitter)
+                tools.run_python_code(
+                    function_args["code"],
+                    _dummy_emitter,
+                    __model__=model,
+                    __messages__=messages,
+                )
             )
 
             messages.append(response_message)
@@ -78,12 +83,13 @@ def run_llm_check(prompt, model="gpt-4-0613"):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print('Usage: python runllmcheck-single.py "<prompt>" [<model>]')
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
+        print('Usage: python runllmcheck-single.py "<prompt>" [<model>] [<api_url>]')
         sys.exit(1)
 
     prompt = sys.argv[1]
     model = sys.argv[2] if len(sys.argv) == 3 else "gpt-4o-mini"
+    api_url = sys.argv[3] if len(sys.argv) == 4 else None
 
     # OpenAI client will automatically use the OPENAI_API_KEY environment variable
     if "OPENAI_API_KEY" not in os.environ:
