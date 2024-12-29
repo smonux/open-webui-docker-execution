@@ -17,6 +17,12 @@ services:
     environment:
       #https://docs.openwebui.com/getting-started/logging
       - GLOBAL_LOG_LEVEL=DEBUG
+  mitmproxy:
+    image: mitmproxy/mitmproxy
+    container_name: mitmproxy
+    ports:
+      - "9091:9091"
+    command: mitmweb --listen-host 0.0.0.0 --listen-port 8081 --web-port 9091 --web-host 0.0.0.0 --mode reverse:https://api.openai.com
 
 volumes:
   open-webui:
