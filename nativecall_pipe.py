@@ -1,4 +1,15 @@
 """
+title: Native Call Pipe
+author: smonux
+author_url:  https://github.com/smonux/open-webui-docker-execution
+version: 0.0.1
+
+This OpenWebUI Function Pipe allows to use the native calling mechanism
+in models which support through the API ("tools" parameter).
+
+Initally a Pull Request to OpenAI adapted to work as a function. It uses
+OpenWebUI internal methods which may break it. Tested with 0.5.2.
+
 
 """
 
@@ -54,7 +65,10 @@ def update_body_request(request: Request, body: dict) -> None:
 
 
 async def process_tool_calls(
-    tool_calls: list, citations: list, messages: list, tools: dict
+    tool_calls: list,
+    event_emitter: Callable[[dict], Awaitable[None]] | None,
+    messages: list,
+    tools: dict,
 ) -> None:
     for tool_call in tool_calls:
         # fix for cohere
@@ -82,13 +96,16 @@ async def process_tool_calls(
             tool_output = str(e)
 
         if tools.get(tool_function_name, {}).get("citation", False):
-            citations.append(
+            await event_emitter(
                 {
-                    "source": {
-                        "name": f"TOOL:{tools[tool_function_name]['toolkit_id']}/{tool_function_name}"
+                    "type": "source",
+                    "data": {
+                        "source": {
+                            "name": f"TOOL:{tools[tool_function_name]['toolkit_id']}/{tool_function_name}"
+                        },
+                        "document": [tool_output],
+                        "metadata": [{"source": tool_function_name}],
                     },
-                    "document": [tool_output],
-                    "metadata": [{"source": tool_function_name}],
                 }
             )
 
@@ -118,6 +135,7 @@ async def handle_streaming_response(
     tools: dict,
     user: UserModel,
     is_ollama: bool,
+    event_emitter: Callable[[dict], Awaitable[None]] | None,
 ):
     body = json.loads(request._body)
     is_openai = not is_ollama
@@ -187,8 +205,10 @@ async def handle_streaming_response(
                 peek = peek.decode("utf-8") if isinstance(peek, bytes) else peek
                 peek_json = extract_json(peek) or {}
 
+                """
                 if len(citations) > 0 and is_end_of_stream(peek):
                     yield wrap_item(json.dumps({"sources": citations}))
+                """
 
                 if is_ollama and is_end_of_stream(peek):
                     # ollama #5796 mixes content and end of stream mark which messes up
@@ -262,7 +282,7 @@ async def handle_streaming_response(
                     extract_json(tool_calls)
                     if isinstance(tool_calls, str)
                     else tool_calls
-                )  # type: ignore
+                )
                 body["messages"].append(
                     {
                         "role": "assistant",
@@ -273,12 +293,12 @@ async def handle_streaming_response(
 
                 await process_tool_calls(
                     tool_calls=tool_calls,
-                    citations=citations,
+                    event_emitter=event_emitter,
                     messages=body["messages"],
                     tools=tools,
                 )
                 # Make another request to the model with the updated context
-                print("calling the model again with tool output included")
+                # print("calling the model again with tool output included")
                 update_body_request(request, body)
                 response = await generate_chat_completions(
                     request=request,
@@ -309,6 +329,7 @@ async def handle_nonstreaming_response(
     tools: dict,
     user: UserModel,
     is_ollama: bool,
+    event_emitter: Callable[[dict], Awaitable[None]] | None,
 ) -> str:
 
     response_dict = response
@@ -335,12 +356,12 @@ async def handle_nonstreaming_response(
 
         await process_tool_calls(
             tool_calls=tool_calls,
-            citations=citations,
+            event_emitter=event_emitter,
             messages=body["messages"],
             tools=tools,
         )
 
-        model_id = body["model"].split(".")[-1]
+        model_id = body["model"].split(".", 1)[-1]
         body["model"] = model_id
         body["tool_ids"] = []
         # Make another request to the model with the updated context
@@ -359,79 +380,16 @@ async def handle_nonstreaming_response(
     message = get_message(response_dict)
     content += " " + message.get("content", "")
 
-    # FIXME: is it possible to handle citations?
     return content
-
-
-EmitterType = Optional[Callable[[dict], Awaitable[None]]]
-
-
-def extract_event_info(event_emitter):
-    if not event_emitter or not event_emitter.__closure__:
-        return None, None
-    for cell in event_emitter.__closure__:
-        if isinstance(request_info := cell.cell_contents, dict):
-            chat_id = request_info.get("chat_id")
-            message_id = request_info.get("message_id")
-            return chat_id, message_id
-    return None, None
-
-
-class SendCitationType(Protocol):
-    def __call__(self, url: str, title: str, content: str) -> Awaitable[None]: ...
-
-
-class SendStatusType(Protocol):
-    def __call__(self, status_message: str, done: bool) -> Awaitable[None]: ...
-
-
-def get_send_citation(__event_emitter__: EmitterType) -> SendCitationType:
-    async def send_citation(url: str, title: str, content: str):
-        if __event_emitter__ is None:
-            return
-        await __event_emitter__(
-            {
-                "type": "source",
-                "data": {
-                    "document": [content],
-                    "metadata": [{"source": url, "html": False}],
-                    "source": {"name": title},
-                },
-            }
-        )
-
-    return send_citation
-
-
-def get_send_status(__event_emitter__: EmitterType) -> SendStatusType:
-    async def send_status(status_message: str, done: bool):
-        if __event_emitter__ is None:
-            return
-        await __event_emitter__(
-            {
-                "type": "status",
-                "data": {"description": status_message, "done": done},
-            }
-        )
-
-    return send_status
 
 
 class Pipe:
     class Valves(BaseModel):
-        OPENAI_BASE_URL: str = Field(
-            default="https://api.openai.com/v1",
-            description="Base URL for OpenAI API endpoints",
-        )
-        OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
-        OLLAMA_URL: str = Field(
-            default="", description="Base URL for Ollama API endpoints"
-        )
         MODEL_PREFIX: str = Field(
             default="nativecall", description="Prefix before model ID"
         )
-        ENABLED_MODELS: str = Field(
-            default="gpt-4o,gpt-4o-mini,gpt-4",
+        OPENAI_API_ENABLED_MODELS: str = Field(
+            default="gpt-4o,gpt-4o-mini",
             description="Enabled models, comma-separated.",
         )
 
@@ -444,39 +402,9 @@ class Pipe:
 
     def pipes(self) -> list[dict[str, str]]:
         # TODO:  fix this
-        try:
-            self.setup()
-        except Exception as e:
-            return [{"id": "error", "name": f"Error: {e}"}]
-        models = []
-        self.model_sources = {}
-        if self.openai_kwargs:
-            enabled_models = [m.strip() for m in self.valves.ENABLED_MODELS.split(",")]
-
-            models.extend(enabled_models)
-            self.model_sources |= {m: "openai" for m in enabled_models}
-
-        if self.ollama_kwargs:
-            ollama_models = [m["name"] for m in client.list()["models"]]
-            models.extend(ollama_models)
-            self.model_sources |= {m: "ollama" for m in ollama_models}
+        models = [m.strip() for m in self.valves.OPENAI_API_ENABLED_MODELS.split(",")]
+        # models.extend([m.strip() for m in self.valves.OLLAMA_ENABLED_MODELS.split(",")])
         return [{"id": m, "name": f"{self.valves.MODEL_PREFIX}/{m}"} for m in models]
-
-    def setup(self):
-        v = self.valves
-        if v.OPENAI_API_KEY and v.OPENAI_BASE_URL:
-            self.openai_kwargs = {
-                "base_url": v.OPENAI_BASE_URL,
-                "api_key": v.OPENAI_API_KEY,
-            }
-        else:
-            self.openai_kwargs = None
-        if v.OLLAMA_URL:
-            self.ollama_kwargs = {"base_url": v.OLLAMA_URL}
-        else:
-            self.ollama_kwargs = None
-        if not (self.openai_kwargs or self.ollama_kwargs):
-            raise ValueError("No API keys provided")
 
     async def pipe(
         self,
@@ -487,27 +415,29 @@ class Pipe:
         __event_emitter__: Callable[[dict], Awaitable[None]] | None,
     ) -> AsyncGenerator | str:
         try:
-            # HACK: Ignoring tool call prompts
+            # HACK: Ignoring "tool call prompts" looking at the prompt. May break
             if body["messages"][0]["content"].startswith("Available Tools"):
                 return ""
         except Exception:
             pass
-        # print(
-        #     "-->body\n",
-        #     body,
-        #      "\n--user--\n",
-        #      __user__,
-        #      "\n--tools--\n",
-        #      __tools__,
-        #      "\n--event-emitter\n",
-        #      __event_emitter__,
-        # )
+        """
+        print(
+            "-->body\n",
+            body,
+            "\n--user--\n",
+            __user__,
+            "\n--tools--\n",
+            __tools__,
+            "\n--event-emitter\n",
+            __event_emitter__,
+        )
+        """
 
         if __tools__ is None:
             __tools__ = {}
 
         # HACK: Get the variables from calling functions
-        # using reflection
+        # using reflection/inspection
         caller_frame = inspect.currentframe()
         request = None
         for _ in range(10):
@@ -535,14 +465,9 @@ class Pipe:
                 caller_frame = caller_frame.f_back
 
         # TODO: assert over request and user
-
-        message_id, _ = extract_event_info(__event_emitter__)
-
-        self.setup()
-
         tools = []
         for t in __tools__.values():
-            # handling str -> string or it complains
+            # handling str -> string or Openai.com complains
             # Invalid schema for function '<function>': 'str' is not valid under any of the given schemas.
             spec = copy.deepcopy(t["spec"])
             for p in spec["parameters"].get("properties", {}).values():
@@ -552,7 +477,8 @@ class Pipe:
 
         if tools:
             body["tools"] = tools
-        model_id = body["model"].split(".")[-1]
+
+        model_id = body["model"].split(".", 1)[-1]
         body["model"] = model_id
         body["tool_ids"] = []
 
@@ -562,13 +488,16 @@ class Pipe:
         if not tools:
             return first_response
 
+        is_ollama = False
         if not body["stream"]:
+            # FIXME: : returning content duplicates the ouput (why?)
             content = await handle_nonstreaming_response(
                 request=request,
                 response=first_response,
                 tools=__tools__,
                 user=user,
-                is_ollama=False,
+                is_ollama=is_ollama,
+                event_emitter=__event_emitter__,
             )
             return ""
         else:
@@ -577,6 +506,7 @@ class Pipe:
                 response=first_response,
                 tools=__tools__,
                 user=user,
-                is_ollama=False,
+                is_ollama=is_ollama,
+                event_emitter=__event_emitter__,
             )
             return content
