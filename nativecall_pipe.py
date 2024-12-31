@@ -135,8 +135,9 @@ async def handle_streaming_response(
     user: UserModel,
     is_ollama: bool,
     event_emitter: Callable[[dict], Awaitable[None]] | None,
+    body: dict,
 ):
-    body = json.loads(request._body)
+    # body = json.loads(request._body)
     is_openai = not is_ollama
 
     def wrap_item(item):
@@ -298,9 +299,11 @@ async def handle_streaming_response(
                 )
                 # Make another request to the model with the updated context
                 # print("calling the model again with tool output included")
+                """
                 model_id = body["model"].split(".", 1)[-1]
                 body["model"] = model_id
                 body["tool_ids"] = []
+                """
                 update_body_request(request, body)
                 response = await generate_chat_completions(
                     request=request,
@@ -333,10 +336,11 @@ async def handle_nonstreaming_response(
     user: UserModel,
     is_ollama: bool,
     event_emitter: Callable[[dict], Awaitable[None]] | None,
+    body: dict,
 ) -> str:
 
     response_dict = response
-    body = json.loads(request._body)
+    # body = json.loads(request._body)
     is_openai = not is_ollama
 
     def get_message_ollama(d: dict) -> dict:
@@ -364,9 +368,11 @@ async def handle_nonstreaming_response(
             tools=tools,
         )
 
+        """
         model_id = body["model"].split(".", 1)[-1]
         body["model"] = model_id
         body["tool_ids"] = []
+        """
         # Make another request to the model with the updated context
         update_body_request(request, body)
 
@@ -467,6 +473,7 @@ class Pipe:
                 caller_frame = caller_frame.f_back
 
         # TODO: assert over request and user
+
         tools = []
         for t in __tools__.values():
             # handling str -> string or Openai.com complains
@@ -492,7 +499,6 @@ class Pipe:
 
         is_ollama = False
         if not body["stream"]:
-            # FIXME: : returning content duplicates the ouput (why?)
             content = await handle_nonstreaming_response(
                 request=request,
                 response=first_response,
@@ -500,8 +506,9 @@ class Pipe:
                 user=user,
                 is_ollama=is_ollama,
                 event_emitter=__event_emitter__,
+                body=body,
             )
-            return ""
+            return content
         else:
             content = await handle_streaming_response(
                 request=request,
@@ -510,5 +517,6 @@ class Pipe:
                 user=user,
                 is_ollama=is_ollama,
                 event_emitter=__event_emitter__,
+                body=body,
             )
             return content
