@@ -17,7 +17,6 @@ import os
 from typing import AsyncGenerator, Awaitable, Callable, Optional, Protocol
 from starlette.requests import Request
 from starlette.responses import StreamingResponse, JSONResponse, AsyncContentStream
-from langchain_core.tools import StructuredTool
 from open_webui.main import generate_chat_completions
 from open_webui.models.users import UserModel
 from pydantic import BaseModel, Field
@@ -267,7 +266,7 @@ async def handle_streaming_response(
                         if "tool_calls" in peek_json["message"]:
                             tool_calls.extend(peek_json["message"]["tool_calls"])
 
-                print(f"tools to call { [ t['function']['name'] for t in tool_calls] }")
+                # print(f"tools to call { [ t['function']['name'] for t in tool_calls] }")
 
                 if buffered_content.strip():
                     body["messages"].append(
@@ -299,6 +298,9 @@ async def handle_streaming_response(
                 )
                 # Make another request to the model with the updated context
                 # print("calling the model again with tool output included")
+                model_id = body["model"].split(".", 1)[-1]
+                body["model"] = model_id
+                body["tool_ids"] = []
                 update_body_request(request, body)
                 response = await generate_chat_completions(
                     request=request,
@@ -309,7 +311,8 @@ async def handle_streaming_response(
                     # body_iterator here does not have __anext_() so it has to be done this way
                     generator = (x async for x in response.body_iterator)
                 else:
-                    raise Exception(f"{response=} is not a StreamingResponse")
+                    pass
+                    # raise Exception(f"{response=} is not a StreamingResponse")
 
         except StopAsyncIteration:
             pass
@@ -366,11 +369,11 @@ async def handle_nonstreaming_response(
         body["tool_ids"] = []
         # Make another request to the model with the updated context
         update_body_request(request, body)
-        print("HHHH", body["model"])
+
         untyped_response = await generate_chat_completions(
             form_data=body, user=user, request=request
         )
-        print(f"{untyped_response=}")
+        # print(f"{untyped_response=}")
         if not isinstance(untyped_response, dict):
             raise Exception(
                 f"Expecting dict from generate_chat_completions got {untyped_response=}"
@@ -398,10 +401,9 @@ class Pipe:
         self.valves = self.Valves(
             **{k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()}
         )
-        print(f"{self.valves=}")
+        # print(f"{self.valves=}")
 
     def pipes(self) -> list[dict[str, str]]:
-        # TODO:  fix this
         models = [m.strip() for m in self.valves.OPENAI_API_ENABLED_MODELS.split(",")]
         # models.extend([m.strip() for m in self.valves.OLLAMA_ENABLED_MODELS.split(",")])
         return [{"id": m, "name": f"{self.valves.MODEL_PREFIX}/{m}"} for m in models]
