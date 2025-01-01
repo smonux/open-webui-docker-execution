@@ -486,6 +486,8 @@ class Pipe:
 
         if tools:
             body["tools"] = tools
+            # It creates some race conditions with tools which manipulate __messages__ directly
+            body["parallel_tool_calls"] = False
 
         model_id = body["model"].split(".", 1)[-1]
         body["model"] = model_id
