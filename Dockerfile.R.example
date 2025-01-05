@@ -1,0 +1,8 @@
+FROM rocker/tidyverse
+
+COPY install_packages.R /tmp/install_packages.R
+
+RUN Rscript /tmp/install_packages.R
+
+
+CMD ["R"]
