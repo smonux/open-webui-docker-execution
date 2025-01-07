@@ -1,9 +1,11 @@
 """
-title: DockerInterpreter Tool (R only)
+title: R DockerInterpreter Tool 
 author: smonux
-version: 0.0.5
+version: 0.0.1
 
 This code allows executing R instructions inside a Docker container.
+If there are plots they are sent to the model for interpretation.
+
 """
 
 import datetime
@@ -56,30 +58,19 @@ event_data_template = """
 """
 
 # R prefix code to capture plots as .jpg
-r_plot_template = r"""
-try({
-  # For better rendering inside containers
-  options(bitmapType='cairo')
-  plot_dir <- "/tmp/"
-  on.exit({
-    dev.list.all <- dev.list()
-    if (!is.null(dev.list.all) && length(dev.list.all) > 0) {
-      for (dev_num in dev.list.all) {
-        dev.set(dev_num)
-        # Copy the current device to a JPEG file
-        dev.copy(
-          jpeg,
-          filename = file.path(plot_dir, paste0("plot_", dev_num, ".jpg")),
-          quality = {jpeg_compression},
-          width = as.integer(strsplit("{image_size}", "x")[[1]][1]),
-          height = as.integer(strsplit("{image_size}", "x")[[1]][2]),
-          units = "px"
-        )
-        dev.off()
-      }
-    }
-  }, add=TRUE)
-}, silent=TRUE)
+r_plot_template = """
+
+options(bitmapType='cairo')
+plot_dir <- "/tmp/"
+
+# Open a JPEG device
+jpeg(
+  filename = file.path(plot_dir, "plot%03d.jpg"),
+  quality = 90,
+  width = 512,
+  height = 512,
+  units = "px"
+)
 
 """
 
@@ -144,6 +135,7 @@ def run_command_r(
     """
     PLOT_DIR = "/tmp/"
     # Add prefix code for capturing R plots
+
     if enable_image_generation:
         code = (
             r_plot_template.format(
@@ -232,7 +224,8 @@ class Tools:
         DOCKER_YAML_OPTIONS: str = Field(
             default="""
     mem_limit : "1g"
-    network_disabled : True
+#    network_disabled : True
+    network : "shared-network"
     working_dir : /mnt
     volumes :
         - "/home/samuel/hosting/shared_files:/mnt"
@@ -249,6 +242,7 @@ class Tools:
         self.valves = self.Valves()
         self.yaml_config = yaml.safe_load(self.valves.DOCKER_YAML_OPTIONS)
         self.docker_args = self.yaml_config
+        self.citation = True
 
     async def run_r_code(
         self,
