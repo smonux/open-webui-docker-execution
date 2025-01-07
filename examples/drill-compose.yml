@@ -1,0 +1,23 @@
+services:
+  drill:
+    build:
+      dockerfile_inline: |
+        FROM apache/drill
+        COPY driverjars/*.jar /opt/drill/jars/3rdparty
+    container_name: drill
+    stdin_open: true
+    ports:
+      - "127.0.0.1:8047:8047"
+      - "127.0.0.1:31010:31010"
+    networks:
+      shared-network:
+           ipv4_address: 172.18.1.95
+    volumes:
+      - storage-plugins.json:/opt/drill/conf/storage-plugins.json
+    environment:
+      - DRILL_EXEC_HTTP_REST_ERRORS_VERBOSE=true
+      #- /home/samuel/drill-docker/drill-data:/mnt
+      #      - /home/samuel/drill-docker/storage-plugins.json:/opt/drill/conf/storage-plugins.json
+networks:
+  shared-network:
+    external: true

@@ -1,0 +1,21 @@
+{
+  "storage": {
+    "mariadb": {
+      "type": "jdbc",
+      "driver": "org.mariadb.jdbc.Driver",
+      "url": "jdbc:mariadb://db:3306/openwebui",
+      "username": "openwebui",
+      "password": "openwebui",
+      "sourceParameters": {
+        "keepaliveTime": 0,
+        "minimumIdle": 0,
+        "idleTimeout": 3600000,
+        "maximumPoolSize": 10,
+        "maxLifetime": 21600000
+      },
+      "authMode": "SHARED_USER",
+      "writerBatchSize": 10000,
+      "enabled": true
+    }
+  }
+}
