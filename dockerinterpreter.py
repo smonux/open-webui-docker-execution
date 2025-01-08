@@ -288,7 +288,7 @@ class Tools:
             default="""
     # See https://docker-py.readthedocs.io/en/stable/containers.html
     mem_limit : "1g"
-    network_disabled : True
+#    network_disabled : True
     working_dir : /mnt
     volumes :
         - "/home/samuel/hosting/shared_files:/mnt"
