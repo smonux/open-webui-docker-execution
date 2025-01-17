@@ -2,7 +2,7 @@
 title: Native Call Pipe
 author: smonux
 author_url:  https://github.com/smonux/open-webui-docker-execution
-version: 0.0.1
+version: 0.0.6
 
 This OpenWebUI Function Pipe allows to use the native calling mechanism
 in models which support through the API ("tools" parameter).
@@ -14,10 +14,10 @@ OpenWebUI internal methods which may break it. Tested with 0.5.2.
 """
 
 import os
-from typing import AsyncGenerator, Awaitable, Callable, Optional, Protocol
+from typing import AsyncGenerator, Awaitable, Callable, Optional, Any 
 from starlette.requests import Request
-from starlette.responses import StreamingResponse, JSONResponse, AsyncContentStream
-from open_webui.main import generate_chat_completions
+from starlette.responses import StreamingResponse, AsyncContentStream
+from open_webui.utils.chat import generate_chat_completion
 from open_webui.models.users import UserModel
 from pydantic import BaseModel, Field
 import inspect
@@ -65,7 +65,7 @@ def update_body_request(request: Request, body: dict) -> None:
 
 async def process_tool_calls(
     tool_calls: list,
-    event_emitter: Callable[[dict], Awaitable[None]] | None,
+    event_emitter: Callable[[dict], Awaitable[None]],
     messages: list,
     tools: dict,
 ) -> None:
@@ -134,7 +134,7 @@ async def handle_streaming_response(
     tools: dict,
     user: UserModel,
     is_ollama: bool,
-    event_emitter: Callable[[dict], Awaitable[None]] | None,
+    event_emitter: Callable[[dict], Awaitable[None]],
     body: dict,
 ):
     # body = json.loads(request._body)
@@ -226,7 +226,7 @@ async def handle_streaming_response(
                     continue
 
                 # We reached a tool call
-                tool_calls = []
+                tool_calls:list[dict] = []
 
                 if is_openai:
                     tool_calls.append({})
@@ -278,11 +278,9 @@ async def handle_streaming_response(
                     )
                     buffered_content = ""
 
-                tool_calls: list = (
-                    extract_json(tool_calls)
-                    if isinstance(tool_calls, str)
-                    else tool_calls
-                )
+                if isinstance(tool_calls, str):
+                    tool_calls = [ extract_json(tool_calls) or {} ]
+
                 body["messages"].append(
                     {
                         "role": "assistant",
@@ -299,13 +297,8 @@ async def handle_streaming_response(
                 )
                 # Make another request to the model with the updated context
                 # print("calling the model again with tool output included")
-                """
-                model_id = body["model"].split(".", 1)[-1]
-                body["model"] = model_id
-                body["tool_ids"] = []
-                """
                 update_body_request(request, body)
-                response = await generate_chat_completions(
+                response = await generate_chat_completion(
                     request=request,
                     form_data=body,
                     user=user,
@@ -324,7 +317,7 @@ async def handle_streaming_response(
             raise e
 
     return StreamingResponse(
-        stream_wrapper(response.body_iterator, []),
+        stream_wrapper((x async for x in response.body_iterator), []),
         headers=dict(response.headers),
     )
 
@@ -335,13 +328,11 @@ async def handle_nonstreaming_response(
     tools: dict,
     user: UserModel,
     is_ollama: bool,
-    event_emitter: Callable[[dict], Awaitable[None]] | None,
+    event_emitter: Callable[[dict], Awaitable[None]],
     body: dict,
 ) -> str:
 
     response_dict = response
-    # body = json.loads(request._body)
-    is_openai = not is_ollama
 
     def get_message_ollama(d: dict) -> dict:
         return d.get("message", {})
@@ -351,7 +342,6 @@ async def handle_nonstreaming_response(
 
     get_message = get_message_ollama if is_ollama else get_message_openai
 
-    citations = []
     content = ""
 
     while "tool_calls" in get_message(response_dict):
@@ -368,21 +358,16 @@ async def handle_nonstreaming_response(
             tools=tools,
         )
 
-        """
-        model_id = body["model"].split(".", 1)[-1]
-        body["model"] = model_id
-        body["tool_ids"] = []
-        """
-        # Make another request to the model with the updated context
+       # Make another request to the model with the updated context
         update_body_request(request, body)
 
-        untyped_response = await generate_chat_completions(
+        untyped_response = await generate_chat_completion(
             form_data=body, user=user, request=request
         )
         # print(f"{untyped_response=}")
         if not isinstance(untyped_response, dict):
             raise Exception(
-                f"Expecting dict from generate_chat_completions got {untyped_response=}"
+                f"Expecting dict from generate_chat_completion got {untyped_response=}"
             )
         response_dict = untyped_response
 
@@ -421,7 +406,8 @@ class Pipe:
         __task__: str | None,
         __tools__: dict[str, dict] | None,
         __event_emitter__: Callable[[dict], Awaitable[None]] | None,
-    ) -> AsyncGenerator | str:
+        __request__: Request
+    ) -> Any:
         try:
             # HACK: Ignoring "tool call prompts" looking at the prompt. May break
             if body["messages"][0]["content"].startswith("Available Tools"):
@@ -446,22 +432,9 @@ class Pipe:
 
         # HACK: Get the variables from calling functions
         # using reflection/inspection
-        caller_frame = inspect.currentframe()
-        request = None
-        for _ in range(10):
-            if caller_frame is None or caller_frame.f_back is None:
-                continue
-            caller_locals = caller_frame.f_back.f_locals
-            if "request" in caller_locals and isinstance(
-                caller_locals["request"], Request
-            ):
-                request = caller_locals["request"]
-                continue
-            else:
-                caller_frame = caller_frame.f_back
 
         caller_frame = inspect.currentframe()
-        user = None
+        user:UserModel|None = None
         for _ in range(10):
             if caller_frame is None or caller_frame.f_back is None:
                 continue
@@ -472,7 +445,7 @@ class Pipe:
             else:
                 caller_frame = caller_frame.f_back
 
-        # TODO: assert over request and user
+        # TODO: assert over user or get user as UserModel differently
 
         tools = []
         for t in __tools__.values():
@@ -491,10 +464,11 @@ class Pipe:
 
         model_id = body["model"].split(".", 1)[-1]
         body["model"] = model_id
-        body["tool_ids"] = []
+        if "tool_ids" in body:
+            del body["tool_ids"]
 
-        first_response = await generate_chat_completions(
-            request=request, form_data=body, user=user
+        first_response = await generate_chat_completion(
+            request=__request__, form_data=body, user=user
         )
         if not tools:
             return first_response
@@ -502,7 +476,7 @@ class Pipe:
         is_ollama = False
         if not body["stream"]:
             content = await handle_nonstreaming_response(
-                request=request,
+                request=__request__,
                 response=first_response,
                 tools=__tools__,
                 user=user,
@@ -513,7 +487,7 @@ class Pipe:
             return content
         else:
             content = await handle_streaming_response(
-                request=request,
+                request=__request__,
                 response=first_response,
                 tools=__tools__,
                 user=user,
@@ -522,3 +496,4 @@ class Pipe:
                 body=body,
             )
             return content
+
