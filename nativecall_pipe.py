@@ -137,7 +137,6 @@ async def handle_streaming_response(
     event_emitter: Callable[[dict], Awaitable[None]],
     body: dict,
 ):
-    # body = json.loads(request._body)
     is_openai = not is_ollama
 
     def wrap_item(item):
@@ -430,7 +429,20 @@ class Pipe:
         if __tools__ is None:
             __tools__ = {}
 
-        user = UsersTable().get_user_by_email(__user__["email"])
+
+        async def _dummy(a:dict)->None:
+            a=a
+            pass
+
+        if __event_emitter__ is None:
+            __event_emitter__ = _dummy
+        if __user__ is not None:
+            user = UsersTable().get_user_by_email(__user__["email"])
+        else:
+            raise Exception("__user__ is None")
+
+        if user is None:
+            raise Exception("user is None after getting it by email")
 
         tools = []
         for t in __tools__.values():
@@ -459,7 +471,7 @@ class Pipe:
             return first_response
 
         is_ollama = False
-        if not body["stream"]:
+        if isinstance(first_response, dict):
             content = await handle_nonstreaming_response(
                 request=__request__,
                 response=first_response,
@@ -470,7 +482,7 @@ class Pipe:
                 body=body,
             )
             return content
-        else:
+        elif isinstance(first_response, StreamingResponse):
             content = await handle_streaming_response(
                 request=__request__,
                 response=first_response,
@@ -481,4 +493,6 @@ class Pipe:
                 body=body,
             )
             return content
+        else:
+            raise Exception(f"{first_response=} of unexpected type")
 
