@@ -18,7 +18,7 @@ from typing import AsyncGenerator, Awaitable, Callable, Optional, Any
 from starlette.requests import Request
 from starlette.responses import StreamingResponse, AsyncContentStream
 from open_webui.utils.chat import generate_chat_completion
-from open_webui.models.users import UserModel
+from open_webui.models.users import UserModel, UsersTable 
 from pydantic import BaseModel, Field
 import inspect
 import json
@@ -430,22 +430,7 @@ class Pipe:
         if __tools__ is None:
             __tools__ = {}
 
-        # HACK: Get the variables from calling functions
-        # using reflection/inspection
-
-        caller_frame = inspect.currentframe()
-        user:UserModel|None = None
-        for _ in range(10):
-            if caller_frame is None or caller_frame.f_back is None:
-                continue
-            caller_locals = caller_frame.f_back.f_locals
-            if "user" in caller_locals:
-                user = caller_locals["user"]
-                continue
-            else:
-                caller_frame = caller_frame.f_back
-
-        # TODO: assert over user or get user as UserModel differently
+        user = UsersTable().get_user_by_email(__user__["email"])
 
         tools = []
         for t in __tools__.values():
